@@ -218,8 +218,8 @@ openxlsx::saveWorkbook(wb = wb_ed_fig1,
 
 ```
 
-Plot genome-wide mC leavels
-```{r, cache=TRUE, message=FALSE, echo=FALSE, error=FALSE}
+Plot genome-wide mC levels
+```{r, cache=TRUE, message=FALSE, error=FALSE, warning=FALSE}
 
 # Global mCG expressed as mean 100kb window +/- SEM
 window_100kb <- tileGenome(seqlengths = seqlengths(BSgenome.Hsapiens.UCSC.hg19),
