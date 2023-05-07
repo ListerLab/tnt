@@ -1,0 +1,12 @@
+﻿id,group,rds_path
+Smith_H9_KSR,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/Smith_H9_Primed_KSR_combined_CG_bsseq.Rds
+Lister_H9_E8,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/H9_ESC_E8_combined_CG_bsseq.Rds
+Lister_MEL1_E8,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/MEL1_ESC_E8_combined_CG_bsseq.Rds
+HESO7,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRS606777_CG_bsseq_obj.Rds
+HESO8,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRS606778_CG_bsseq_obj.Rds
+Ecker_H9,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/h9_WGBS_CG_bsseq_obj.Rds
+Ecker_H1,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/methylC-seq_h1_all_merged_CG_bsseq_obj.Rds
+RL1751_1771,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL1751_RL1771_merge_iPSC_E8media_CG_bsseq_obj.Rds
+RL417,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL417_P3_32F_Primed.rmdup_CG_bsseq_obj.Rds
+RL418,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL418_P10_32F_Primed.rmdup_CG_bsseq_obj.Rds
+RL703,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL703_all_merge_CG_bsseq_obj.Rds
