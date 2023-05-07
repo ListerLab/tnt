@@ -1,0 +1,1 @@
+cmd = cmeans_cluster_Primed_4.bed hg19 cmeans_cluster_Primed_4homer/ -size given -p 6

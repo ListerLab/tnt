@@ -1,0 +1,2 @@
+chrL_non_conv_pc	nc_mCG	nc_mCA	nc_mCC	nc_mCT	chrL_positions_covered	chrL_median_coverage	mCG	mCA	mCC	mCT	Nuclear_genome_covered_c_pc	Nuclear_genome_min	Nuclear_genome_1stQu	Nuclear_genome_median	Nuclear_genome_mean	Nuclear_genome_3rdQu	Nuclear_genome_max	Nuclear_genome_cov_variance
+0.39	0.35	0.56	0.3	0.3	24182	1220	74.75	2.02	0.38	0.62	97.97	1	5	7	6.95	9	7514	92.29

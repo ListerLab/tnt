@@ -1,0 +1,1 @@
+cmd = cmeans_cluster_Naive_1.bed hg19 cmeans_cluster_Naive_1homer/ -size given -p 6
