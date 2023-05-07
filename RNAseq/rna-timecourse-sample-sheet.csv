@@ -1,0 +1,12 @@
+﻿id,timepoint,media
+D0_32F_MEF,d0,Fibroblast
+D3_32F_MEF,d3,Fibroblast
+D7_32F_MEF,d7,Fibroblast
+D13_Primed_32F_KSR,d13,Primed
+D21_Primed_32F_KSR,d21,Primed
+P3_Primed_32F_KSR,P3,Primed
+P10_Primed_32F_KSR,P10,Primed
+D13_Naive_32F_Naive,d13,Naive
+D21_Naive_32F_Naive,d21,Naive
+P3_Naive_32F_Naive,P3,Naive
+P10_Naive_32F_Naive,P10,Naive
