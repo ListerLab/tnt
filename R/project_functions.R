@@ -218,7 +218,8 @@ make_mC_matrix <- function(obj_fls, gr, cores=1){
                         gr = gr, mc.cores = cores) %>%
             GRangesList()
 
-        loci <- str_c(as.character(seqnames(grl[[1]])), start(grl[[1]]), sep = ":") %>%
+        loci <- str_c(as.character(seqnames(grl[[1]])),
+                      start(grl[[1]]), sep = ":") %>%
                 str_c(end(grl[[1]]), sep = "-")
 
         get_mC <- function(x){

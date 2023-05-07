@@ -1,0 +1,684 @@
+---
+title: "Figure 2 and associated extended data figures"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+source("R/project_functions.R")
+```
+
+Read in the sample metadata
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+all(file.exists(mdat$BSseq_CG))
+```
+
+## CG-DMR analysis
+CG-DMRs were called using the script `wgbs/dmrs/run_dmrseq_dug.R`
+Output `.Rds` objects are a list containing the DMRs as a GRanges object and a sample table with group, library and input file information.
+DMR files are in the folders prefixed with `wgbs/dmrs/dmrseq_*`
+
+Function to process the DMR files and apply filters
+```{r, cache=TRUE}
+process_dmr <- function(dmr_obj, p = 0.05, delta = 0.2, n_cores=3){
+    
+    # make mCG matrix
+    bsseq_fls <- basename(dmr_obj$manifest_data$rds_path)
+    bsseq_fls <- str_c("wgbs/CG_bsobj/", bsseq_fls)    
+    
+    mC_dat <- make_mC_matrix(obj_fls = bsseq_fls,
+                             gr = dmr_obj$dmr_granges,
+                             cores = n_cores)
+    
+    ind <- match(colnames(mC_dat),
+                 basename(dmr_obj$manifest_data$rds_path))
+    colnames(mC_dat) <- dmr_obj$manifest_data$id[ind]
+    
+    ## Calculate delta for groups
+    groups <- unique(dmr_obj$manifest_data$group)
+    g1_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[1]])
+    g2_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[2]])
+    group_delta <- g1_mean - g2_mean
+    
+    ## Setup mcols for output
+    df <- data.frame(g1_mean = g1_mean, g2_mean = g2_mean,
+                     delta = group_delta)
+    ## Round numbers to three digits which is something meaningful for these data
+    df <- round(df, digits = 3)
+    
+    mcols(dmr_obj$dmr_granges) <- cbind(mcols(dmr_obj$dmr_granges), df, mC_dat)
+    
+    ## Tag DMRs if they intersect a blacklist region
+    blacklist_gr <- bed_to_gr("resources/hg19_blacklist_regions_ENCFF001TDO.bed")
+    dmr_obj$dmr_granges$blacklist <- overlapsAny(dmr_obj$dmr_granges,
+                                                 blacklist_gr)
+    
+    ## Set if DMR passes significance threshold
+    dmr_obj$dmr_granges$significant <- (dmr_obj$dmr_granges$pval < p) & 
+        (abs(dmr_obj$dmr_granges$delta) >= delta) &
+        (dmr_obj$dmr_granges$blacklist == FALSE)
+        
+    return(dmr_obj)
+}
+```
+
+### Primed hiPSC vs Primed ESC DMRs
+
+#### Merge ESC replicates for DMR calling
+
+Merge and collapse H9 ESC KSR replicates from Smith lab
+```{r, eval=FALSE}
+smith_primed_files <- mdat$BSseq_CG[mdat$Background == "H9" &
+                                   mdat$Media == "KSR" &
+                                   mdat$Lab == "Smith"]
+
+stopifnot(all(file.exists(smith_primed_files)))
+
+smith_primed_list <- lapply(X = smith_primed_files, FUN = readRDS)
+
+smith_primed_obj <- bsseq::combineList(smith_primed_list)
+
+merge_vec <- c("H9_KSR", "H9_KSR", "H9_KSR")
+names(merge_vec) <- sampleNames(smith_primed_obj)
+
+smith_collapsed_obj <- bsseq::collapseBSseq(BSseq = smith_primed_obj,
+                                            group = merge_vec)
+
+saveRDS(object = smith_collapsed_obj, file = "wgbs/CG_bsobj/Smith_H9_Primed_KSR_combined_CG_bsseq.Rds")
+```
+
+Merge MEL1 ESC E8 replicates
+```{r, eval=FALSE}
+mel1_esc_files <- mdat$BSseq_CG[mdat$Background == "MEL1" &
+                                   mdat$Media == "E8" &
+                                   mdat$State == "ESC"]
+
+stopifnot(all(file.exists(mel1_esc_files)))
+
+mel1_esc_list <- lapply(X = mel1_esc_files, FUN = readRDS)
+
+mel1_esc_obj <- bsseq::combineList(mel1_esc_list)
+
+merge_vec <- c("MEL1_ESC_E8", "MEL1_ESC_E8")
+names(merge_vec) <- sampleNames(mel1_esc_obj)
+
+mel1_collapsed_obj <- bsseq::collapseBSseq(BSseq = mel1_esc_obj,
+                                            group = merge_vec)
+
+saveRDS(object = mel1_collapsed_obj,
+        file = "wgbs/CG_bsobj/MEL1_ESC_E8_combined_CG_bsseq.Rds")
+```
+
+Merge H9 ESC E8 replicates
+```{r, eval=FALSE}
+h9_esc_files <- mdat$BSseq_CG[mdat$Background == "H9" &
+                                   mdat$Media == "E8" &
+                                   mdat$State == "ESC"]
+
+stopifnot(all(file.exists(h9_esc_files)))
+
+h9_esc_list <- lapply(X = h9_esc_files, FUN = readRDS)
+
+h9_esc_obj <- bsseq::combineList(h9_esc_list)
+
+merge_vec <- c("H9_ESC_E8", "H9_ESC_E8")
+names(merge_vec) <- sampleNames(h9_esc_obj)
+
+mel1_collapsed_obj <- bsseq::collapseBSseq(BSseq = h9_esc_obj,
+                                            group = merge_vec)
+
+saveRDS(object = mel1_collapsed_obj,
+        file = "wgbs/CG_bsobj/H9_ESC_E8_combined_CG_bsseq.Rds")
+```
+
+### DMR calling
+
+DMRs called using the script ```"wgbs/dmrs/run_dmrseq_dug.R"```
+
+Load the DMR object
+```{r, cache=TRUE}
+dmr_a <- readRDS("wgbs/dmrs/dmrseq_primed_vs_esc_original/dmrseq_primed_vs_esc_original_ESC_vs_Primed_dmrseq_dmrs.Rds")
+```
+
+Process the DMR data
+```{r, cache=TRUE, echo=FALSE, message=FALSE}
+dmr_a <- process_dmr(dmr_a)
+```
+
+Barplot DMR count
+```{r, cache=TRUE}
+## Barplot DMR count
+
+barplot_dmr_counts <- function(dmr_obj){
+    
+    dmr_obj_filt <- dmr_obj$dmr_granges[dmr_obj$dmr_granges$significant] 
+    
+    groups <- unique(dmr_obj$manifest_data$group)
+
+    dmr_counts <- data.frame(direction=ifelse(test = dmr_obj_filt$delta > 0,
+                                              yes = str_c(groups[1], " > ", groups[2]),
+                                              no = str_c(groups[2], " > ", groups[1])))
+    
+    
+    dmr_counts <- data.frame(table(dmr_counts))
+    
+    gg_dmr_bar <- ggplot(data = dmr_counts, aes(x = direction, y = Freq)) +
+        geom_bar(stat = "identity") +
+        ylab("DMR count") + xlab("") +
+        scale_y_continuous(expand = c(0,0)) +
+        geom_text(aes(label = Freq), hjust = 1) +
+        sams_pub_theme(legend_pos = 'left', x.text.angle = 0, hjust = 0.5) +
+        coord_flip()
+    
+    return(gg_dmr_bar)
+}
+```
+
+```{r, cache=TRUE}
+dmr_a_counts_gg <- barplot_dmr_counts(dmr_a)
+
+pdf(file = "wgbs/plots/primed_vs_esc_dmr_class_count_barplot.pdf",
+    height = 0.8, width = 2)
+    dmr_a_counts_gg
+dev.off()
+
+dmr_a_counts_gg
+
+## Save source data
+wb_fig2 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2a")
+openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2a",
+                    x = dmr_a_counts_gg$data)
+```
+
+DMR scatterplot with progenitor cell data
+```{r, cache=TRUE}
+
+## List the file paths
+fl_paths <- c(dmr_a$manifest_data$rds_path,
+              mdat$BSseq_CG[mdat$Library_id %in% c("RL415", "RL702")])
+
+## Remove the paths specific to server
+fl_paths <- str_remove(string = fl_paths, pattern = "/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/")
+
+## Matching IDs
+esc_id <- mdat$Library_id[match(basename(dmr_a$manifest_data$rds_path)
+                                [dmr_a$manifest_data$group == "ESC"],
+                                basename(mdat$BSseq_CG))]
+
+ips_id <- mdat$Library_id[match(basename(dmr_a$manifest_data$rds_path)
+                                [dmr_a$manifest_data$group == "Primed"],
+                                basename(mdat$BSseq_CG))]
+
+fib_id <- c("RL415", "RL702")
+
+## Subset for significant DMRs
+ips_esc_dmrs <- dmr_a$dmr_granges[dmr_a$dmr_granges$significant] 
+
+
+## Calc mCG/CG for all DMRs
+ips_esc_dmrs_mCG <- make_mC_matrix(obj_fls = fl_paths,
+                                   gr = ips_esc_dmrs, cores = 3)
+
+## Change colnames to library ID
+colnames(ips_esc_dmrs_mCG) <- mdat$Library_id[match(colnames(ips_esc_dmrs_mCG),
+                                                    basename(mdat$BSseq_CG))]
+
+## Calculate group means
+esc_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,ips_id], na.rm = TRUE) -
+    rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+
+fib_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,ips_id], na.rm = TRUE) -
+    rowMeans(ips_esc_dmrs_mCG[ ,fib_id], na.rm = TRUE)
+
+## Round the values when making the table, so less ambuity for the cutoffs below
+dmr_delta_df <- data.frame(ESC_delta = round(esc_ips_delta, digits = 2),
+                           Fibroblast_delta = round(fib_ips_delta, digits = 2))
+
+dmr_delta_df$dmr <- NA
+
+## Set DMR classes
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta >= 0.2 &
+                     dmr_delta_df$Fibroblast_delta >= 0.2] <- "Aberrant_hypermethylation"
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta <= -0.2 &
+                     dmr_delta_df$Fibroblast_delta <= -0.2] <- "Aberrant_hypomethylation"
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta <= -0.2 & 
+                     abs(dmr_delta_df$Fibroblast_delta) <= 0.2 ] <- "Memory_hypomethylation"
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta >= 0.2 &
+                     abs(dmr_delta_df$Fibroblast_delta) <= 0.2 ] <- "Memory_hypermethylation"
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta <= -0.2 &
+                     dmr_delta_df$Fibroblast_delta >= 0.2] <- "Partial_hypomethylation_memory"
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta >= 0.2 &
+                     dmr_delta_df$Fibroblast_delta <= -0.2] <- "Partial_hypermethyation_memory"
+
+dmr_delta_df$dmr <- factor(dmr_delta_df$dmr)
+
+table(dmr_delta_df$dmr) %>% sum()
+dmr_delta_df$Class <- ifelse(test = dmr_delta_df$ESC_delta < 0, yes = "Hypo", no = "Hyper")
+dmr_delta_df$Class <- factor(dmr_delta_df$Class, levels=c("Hyper", "Hypo"))
+
+all(rownames(dmr_delta_df) == gr_to_loci(ips_esc_dmrs))
+
+ips_esc_dmrs$class <- dmr_delta_df$dmr
+ips_esc_dmrs$direction <- dmr_delta_df$Class
+
+saveRDS(object = ips_esc_dmrs,
+        file = "wgbs/processed_data/classified_dmrs_granges.Rds")
+
+dmr_scatter_gg <- ggplot(data = dmr_delta_df,
+                         mapping = aes(x = ESC_delta,
+                                       y = Fibroblast_delta,
+                                       colour = Class, fill = Class)) +
+    geom_vline(xintercept = c(-.2, .2), alpha=0.5) + 
+    geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+    geom_point(alpha=0.2, inherit.aes = TRUE, size=1) +
+    scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) +
+    scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+    ylab("Primed iPSC mCG - Fibroblast mCG") +
+    xlab("Primed iPSC mCG - ESC mCG") +
+    scale_colour_manual(values = vitC[c(6,1)]) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+dmr_scatter_gg_extra <- ggExtra::ggMarginal(dmr_scatter_gg,
+                                      groupColour = TRUE, groupFill=TRUE)
+
+pdf("wgbs/plots/dmr_delta_scatter.pdf", width = 2.5, height = 2.3)
+dmr_scatter_gg_extra
+dev.off()
+
+dmr_scatter_gg_extra
+
+
+
+```
+
+```{r, cache=TRUE}
+## Save source data
+openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2b")
+openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2b",
+                    x = dmr_scatter_gg$data)
+```
+
+```{r, cache=TRUE}
+table(dmr_delta_df$dmr)
+```
+
+Time course plots of DMR change
+```{r, cache=TRUE, fig.width=3}
+
+timecourse_samples <- c("RL415", "RL413", "RL399",
+                        "RL414", "RL698", "RL411", "RL412",
+                        "RL416", "RL697", "RL417", "RL418", "RL703", "RL1751_1771",
+                        "RL2351_merge", "RL2352_merge",
+                        "SRR1561745_merge", "SRS004213", "SRS114877",
+                        "SRS606777", "SRS606778")
+
+ds_sub <- mdat[mdat$Library_id %in% timecourse_samples, ,drop=TRUE] %>% as.data.frame()
+
+ips_esc_dmrs_mCG_timecourse <- make_mC_matrix(obj_fls = ds_sub$BSseq_CG,
+                                              gr = ips_esc_dmrs, cores = 3)
+
+dim(ips_esc_dmrs_mCG_timecourse)
+
+colnames(ips_esc_dmrs_mCG_timecourse) <- ds_sub$Library_id
+#colnames(ips_esc_dmrs_mCG_timecourse) <- ds_sub$Manuscript.Name
+
+#pheatmap(ips_esc_dmrs_mCG_timecourse, show_rownames = FALSE)
+
+## Plot DMR timecourse
+primed_line_32F <- ds_sub$Manuscript.Name[ds_sub$State %in% c("Early", "Primed") & 
+                                         (ds_sub$Timepoint %in% c("d0", "d3", "d7",
+                                                              "d13", "d21", "P3", 
+                                                              "P10+"))]
+
+naive_line_32F <- ds_sub$Manuscript.Name[ds_sub$State %in% c("Early", "Naive") & 
+                                        (ds_sub$Timepoint %in% c("d0", "d3", "d7",
+                                                             "d13", "d21", "P3", 
+                                                             "P10+"))]
+
+esc_line <- ds_sub$Manuscript.Name[ds_sub$State %in% c("ESC")]
+
+
+ips_esc_dmrs_mCG_timecourse_sub <- as.matrix(ips_esc_dmrs_mCG_timecourse)
+
+### Take the mean of each timepoint where there is replicates
+colnames(ips_esc_dmrs_mCG_timecourse_sub)
+#d0_mean <- rowMeans(ips_esc_dmrs_mCG_timecourse_sub[ ,c("d0", "d0_38F")], na.rm = TRUE)
+
+primed_iPSC_mean <- rowMeans(ips_esc_dmrs_mCG_timecourse_sub[ ,c("RL1751_1771",
+                                                                 "RL417",
+                                                                 "RL418",
+                                                                 "RL703")],
+                             na.rm = TRUE)
+
+naive_iPSC_mean <- rowMeans(ips_esc_dmrs_mCG_timecourse_sub[ ,c("RL411",
+                                                                "RL412")],
+                            na.rm = TRUE)
+
+ESC_mean <- rowMeans(ips_esc_dmrs_mCG_timecourse_sub[ ,c("RL2351_merge",
+                                                         "RL2352_merge",
+                        "SRR1561745_merge", "SRS004213", "SRS114877",
+                        "SRS606777", "SRS606778")], na.rm = TRUE)
+
+# remove_id <- c("d0", "d0_38F", "P3_Primed", "P10_Primed",
+#                "P20_Primed_38F_E8", "P26_Primed_E8", "P3_Naive", "P10_Naive",
+#                "P10_Naive_38F", c("H9_mTeSR1", "H9_E8",
+#                                   "H1_mTeSR1", "HESO7_KSR", "HESO8_KSR"))
+# 
+# remove_id <- c("d0", "d0_38F")
+
+dmr_means <- data.frame(d0=ips_esc_dmrs_mCG_timecourse_sub[ ,"RL415"],
+                        Primed_iPSC=primed_iPSC_mean, 
+                        Naive_iPSC=naive_iPSC_mean, ESC=ESC_mean)
+
+#dmr_means <- data.frame(d0=d0_mean)
+
+#ips_esc_dmrs_mCG_timecourse_sub <- cbind(dmr_means,
+#                             ips_esc_dmrs_mCG_timecourse_sub[ #,!colnames(ips_esc_dmrs_mCG_timecourse_sub) %in% remove_id])
+
+ips_esc_dmrs_mCG_timecourse_sub <- cbind(dmr_means,
+                             ips_esc_dmrs_mCG_timecourse_sub)
+
+colnames(ips_esc_dmrs_mCG_timecourse_sub)
+
+### Set values relative to d0
+rel_zero <- function(dat){
+        
+        rel_zero_dat <- apply(X = dat, MARGIN = 1, FUN = function(x)(x - x[1])) %>% t()
+        return(rel_zero_dat)
+}
+
+ips_esc_dmrs_mCG_timecourse_sub <- rel_zero(ips_esc_dmrs_mCG_timecourse_sub) %>% data.frame()
+
+#ips_esc_dmrs_mCG_timecourse_sub$class <- ifelse(test = ips_esc_dmrs$mCG_delta < 0,
+#                                                yes = "Hypo", no = "Hyper")
+
+all(rownames(ips_esc_dmrs_mCG_timecourse_sub) == rownames(dmr_delta_df))
+ips_esc_dmrs_mCG_timecourse_sub$dmr <- dmr_delta_df$dmr
+ips_esc_dmrs_mCG_timecourse_sub$Class <- dmr_delta_df$Class
+
+z_melt <- reshape2::melt(ips_esc_dmrs_mCG_timecourse_sub)
+
+table(z_melt$variable)
+z_melt$variable <- as.character(z_melt$variable)
+
+# Set States
+z_melt$state <- NA
+z_melt$state[z_melt$variable %in% c("RL415", "RL413", "RL399")] <- "Early"
+
+z_melt$state[z_melt$variable %in% c("RL414", "RL698", "RL411", "RL412")] <- "Naive"
+
+z_melt$state[z_melt$variable %in% c("RL416", "RL697", "RL417", "RL418",
+                                    "RL703", "RL1751_1771")] <- "Primed"
+
+z_melt$state[z_melt$variable %in% c( "RL2351_merge", "RL2352_merge",
+                        "SRR1561745_merge", "SRS004213", "SRS114877",
+                        "SRS606777", "SRS606778")] <- "ESC"
+
+# Set timepoints
+z_melt$timepoint <- NA
+
+z_melt$timepoint[z_melt$variable == "RL415"] <- "d0"
+
+z_melt$timepoint[z_melt$variable == "RL413"] <- "d3"
+
+z_melt$timepoint[z_melt$variable == "RL399"] <- "d7"
+
+z_melt$timepoint[z_melt$variable %in% c("RL414", "RL416")] <- "d13"
+
+z_melt$timepoint[z_melt$variable %in% c("RL697", "RL698")] <- "d21"
+
+z_melt$timepoint[z_melt$variable %in% c("RL1751_1771", "RL417", "RL418",
+                                        "RL703", "RL411", "RL412")] <- "iPSC"
+
+z_melt$timepoint[z_melt$variable %in% c("RL2351_merge", "RL2352_merge",
+                        "SRR1561745_merge", "SRS004213", "SRS114877",
+                        "SRS606777", "SRS606778")] <- "ESC"
+
+d7 <- z_melt[z_melt$timepoint == "d7", ]
+d7_naive <- d7
+d7_naive$state <- "Naive"
+d7_primed <- d7
+d7_primed$state <- "Primed"
+
+z_melt <- rbind(z_melt, d7_naive, d7_primed)
+
+gg_z <- ggplot2::ggplot(z_melt, aes(x=timepoint, y=value, group=state, color=state)) +
+        facet_wrap(facets = .~dmr, ncol = 2) +
+        geom_hline(yintercept = 0) +
+        scale_x_discrete(limits=c("d0", "d3", "d7", "d13", "d21", "iPSC", "ESC")) +
+        scale_y_continuous(expand = c(0, 0), limits = c(-0.75, 0.75), breaks = seq(from=-1, to=1, by=0.25)) +
+        stat_summary(mapping = aes(group=variable, colour=state), geom="point",
+                     fun.data = mean_se, size=1.5, alpha=0.6) +
+        stat_summary(mapping = aes(group=state, colour=state), geom="line",
+                     fun.data = mean_se, size=1, alpha=0.8) +
+        scale_color_manual(values = reprog_pal[c(3,4,2,1)]) +
+        scale_fill_manual(values = reprog_pal[c(3,4,2,1)]) +
+        xlab("") + ylab("Mean methylation change \nin DMRs relative to fibroblasts (d0)") +
+        sams_pub_theme(legend_pos = "right")
+
+pdf("wgbs/plots/dmr_abs_difference_d0_line_plots.pdf", width = 3, height = 5)
+gg_z
+dev.off()
+
+## Just with the two largest groups for main figure
+
+z_melt_sub <- z_melt[z_melt$dmr %in% c("Memory_hypomethylation", "Aberrant_hypermethylation"), ]
+z_melt_sub$dmr <- factor(z_melt_sub$dmr,
+                         levels= c("Aberrant_hypermethylation",
+                                   "Memory_hypomethylation"))
+
+gg_z2 <- ggplot2::ggplot(z_melt_sub, aes(x=timepoint, y=value, group=state, color=state)) +
+        facet_grid(facets = dmr~.) +
+        geom_hline(yintercept = 0) +
+        scale_x_discrete(limits=c("d0", "d3", "d7", "d13", "d21", "iPSC", "ESC")) +
+        #scale_y_continuous(expand = c(0, 0), limits = c(-0.35, 0.35), breaks = seq(from=-1, to=1, by=0.2)) +
+        stat_summary(mapping = aes(group=variable, colour=state), geom="point",
+                     fun.data = mean_se, size=1.5, alpha=0.6) +
+        stat_summary(mapping = aes(group=state, colour=state), geom="line",
+                     fun.data = mean_se, size=1, alpha=0.8) +
+        scale_color_manual(values = reprog_pal[c(3,4,2,1)]) +
+        scale_fill_manual(values = reprog_pal[c(3,4,2,1)]) +
+        xlab("") + ylab("Mean methylation change \nin DMRs relative to fibroblasts (d0)") +
+        sams_pub_theme(legend_pos = "right")
+
+pdf("wgbs/plots/dmr_abs_difference_d0_line_plots_top2.pdf", width = 2.35,
+    height = 2)
+gg_z2
+dev.off()
+
+
+```
+
+```{r, cache=TRUE}
+## Save source data
+openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2cd")
+openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2cd",
+                    x = gg_z2$data)
+
+wb_ed_fig2 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2c")
+openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2c",
+                    x = gg_z$data)
+```
+
+
+```{r, fig.width=3, fig.height=6, cache=TRUE}
+gg_z
+```
+
+Heatmap DMRs for timecourse
+```{r, cache=TRUE}
+heatmap_samples <- c("RL415", "RL702", "RL413", "RL399",
+                     "RL416", "RL697", "RL417", "RL418", "RL703", "RL1751_1771",
+                     "RL2351_merge", "RL2352_merge",
+                     "SRR1561745_merge", "SRS004213", "SRS114877",
+                     "SRS606777", "SRS606778",
+                     "RL414", "RL698", "RL411", "RL412", "RL838")
+
+hm_ind <- match(heatmap_samples, mdat$Library_id)
+
+hm_df <- make_mC_matrix(obj_fls = mdat$BSseq_CG[hm_ind],
+                        gr = ips_esc_dmrs, cores = 4)
+
+colnames(hm_df) <- mdat$Library_id[hm_ind]
+
+## Sort based on delta
+row_order <- order(ips_esc_dmrs$delta, decreasing = TRUE)
+
+hm_coldat <- data.frame(row.names = mdat$Library_id[hm_ind],
+                        Group = as.character(mdat$State[hm_ind]))
+
+hm_rowdat <- data.frame(row.names = rownames(hm_df),
+                        State=as.character(ips_esc_dmrs$direction))
+
+
+dmr_hm <- pheatmap(hm_df[row_order, ],
+                   fontsize = 6, 
+         annotation_col = hm_coldat,
+         annotation_row = hm_rowdat,
+         labels_col = mdat$Manuscript.Name[hm_ind],
+         cluster_cols = FALSE,
+         cluster_rows = FALSE,
+         show_rownames = FALSE)
+
+pdf("wgbs/plots/cg-dmr-timecourse-heatmap.pdf", height = 3, width = 3)
+dmr_hm
+dev.off()
+
+png("wgbs/plots/cg-dmr-timecourse-heatmap.png", units = "in", res = 300, 
+    height = 3, width = 3)
+dmr_hm
+dev.off()
+```
+
+```{r, cache=TRUE}
+openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2b")
+openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2b",
+                    x = hm_df)
+```
+
+
+Load the ICR data
+```{r, cache=TRUE}
+icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
+
+icr_gr <- GRanges(seqnames = icrs$Chromosome,
+                  IRanges(start = icrs$Start, end = icrs$End))
+
+mcols(icr_gr) <- icrs
+
+icr_gr$Categoly[grepl("Secondary", icr_gr$Categoly)] <- "Secondary ICR"
+icr_gr$Categoly[grepl("Maternal", icr_gr$Categoly)] <- "Maternal germline ICR"
+icr_gr$Categoly[grepl("Paternal", icr_gr$Categoly)] <- "Paternal germline ICR"
+icr_gr$Categoly[grepl("Placenta", icr_gr$Categoly)] <- "Placenta-specific maternal ICR"
+
+saveRDS(icr_gr, "resources/imprint_control_regions_granges_hg19.Rds")
+
+```
+
+Calculate mCG/CG for all ICRs for all samples. 
+```{r, eval=FALSE}
+stopifnot(all(file.exists(mdat$BSseq_CG)))
+icr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG, gr = icr_gr, cores = 4)
+colnames(icr_mCG) <- mdat$Library_id
+saveRDS(icr_mCG, "wgbs/processed_data/icr_mcg_all.Rds")
+```
+
+```{r, cache=TRUE}
+icr_mCG <- readRDS("wgbs/processed_data/icr_mcg_all.Rds")
+```
+
+Create timecourse boxplots for Fig 2 and Fig S2
+```{r, cache=TRUE}
+icr_timecourse <- c("RL415", "RL702", "RL413", "RL399",
+                     "RL414", "RL698", "RL411", "RL412",
+                     "RL416", "RL697", "RL417", "RL418", "RL1751_1771")
+
+colnames(icr_mCG) <- mdat$Library_id
+
+icr_time_df <- icr_mCG[ ,icr_timecourse] %>% data.frame()
+icr_time_df$class <- as.character(icr_gr$Categoly)
+
+icr_time_df <- reshape2::melt(icr_time_df)
+
+icr_time_ind <- match(icr_time_df$variable, mdat$Library_id)
+icr_time_ind2 <- match(icr_timecourse, mdat$Library_id)
+ 
+icr_time_df$id <- factor(mdat$Manuscript.Name[icr_time_ind],
+                         levels=mdat$Manuscript.Name[icr_time_ind2])
+
+icr_time_df$group <- mdat$State[icr_time_ind]
+
+gg_icr_time_box <- ggplot(icr_time_df, aes(x = id, y = value,
+                                           fill=group, alpha=0.8)) +
+    geom_boxplot(outlier.shape = NA) +
+    facet_grid(class~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    scale_fill_manual(values = reprog_pal[c(3,2,1)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+
+
+pdf("wgbs/plots/icr_timecourse_boxplots_maternal_germline.pdf",
+    height = 2, width = 2.25)
+
+    ggplot(icr_time_df[icr_time_df$class == "Maternal germline ICR", ],
+           aes(x = id, y = value, fill=group)) +
+    geom_boxplot(outlier.shape = NA, lwd=0.18) +
+    facet_grid(.~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    scale_fill_manual(values = reprog_pal[c(3,2,1)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+    
+dev.off()
+
+pdf("wgbs/plots/icr_timecourse_boxplots_NOT_maternal_germline.pdf",
+    height = 3.5, width = 2.25)
+
+    ggplot(icr_time_df[icr_time_df$class != "Maternal germline ICR", ],
+           aes(x = id, y = value, fill=group)) +
+    geom_boxplot(outlier.shape = NA, lwd=0.18) +
+    facet_grid(class~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    scale_fill_manual(values = reprog_pal[c(3,2,1)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+    
+dev.off()
+
+gg_icr_time_box
+
+
+```
+Write source data sheets
+```{r, cache=TRUE}
+openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2d")
+openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2d",
+                    x = gg_icr_time_box$data)
+
+openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2f")
+openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2f",
+                    x = gg_icr_time_box$data)
+```
+
+```{r}
+openxlsx::saveWorkbook(wb = wb_fig2,
+                       file = "Figure_2_source_data.xlsx",
+                       overwrite = TRUE)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig2,
+                       file = "ED_Figure_2_source_data.xlsx",
+                       overwrite = TRUE)
+```
+
+
+```{r}
+sessionInfo()
+```
+
