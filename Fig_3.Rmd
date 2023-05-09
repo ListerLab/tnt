@@ -1,0 +1,1086 @@
+---
+title: "Figure 2 and associated extended data figures"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE, error=FALSE}
+source("R/project_functions.R")
+```
+
+Load DNA methylation metadata
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+Load the DMR object with annotations
+```{r, cache=TRUE}
+all_dmrs <- readRDS("wgbs/processed_data/classified_dmrs_granges.Rds")
+```
+
+Write DMR results to file
+```{r, cache=TRUE}
+all_dmrs_df <- as.data.frame(all_dmrs)
+all_dmrs_df$loci <- gr_to_loci(all_dmrs)
+
+write.table(all_dmrs_df, "wgbs/processed_data/all_dmrs_reults.csv", quote = FALSE, sep = ",", row.names = FALSE)
+```
+
+
+Make CG-DMR mCG/CG matrix for relevant samples
+```{r, cache=TRUE}
+
+fib_libs <- c("RL415", "RL702")
+primed_libs <- c("RL417", "RL418", "RL703", "RL1751_1771")
+naive_libs <- c("RL411", "RL412", "RL838")
+tnt_libs <- c("RL1124", "RL1125")
+ntp_libs <- c("RL936", "RL937", "RL837")
+esc_libs <- c("RL2352_merge", "RL2351_merge", "SRS114877",
+          "SRR1561745_merge", "SRS004213", "SRS606777", "SRS606778")
+    
+libs <- c(fib_libs, primed_libs, naive_libs, tnt_libs, ntp_libs, esc_libs)
+
+ind <- match(libs, mdat$Library_id)
+
+dmr_mCG_matrix <- make_mC_matrix(obj_fls = mdat$BSseq_CG[ind],
+                                 gr = all_dmrs, cores = 4)
+
+colnames(dmr_mCG_matrix) <- mdat$Library_id[ind]
+```
+
+Caclculate mean delta for hiPSCs compared to hESCs
+```{r, cache=TRUE}
+
+## Calculate mean delta
+esc_n2p_d13_delta <- rowMeans(dmr_mCG_matrix[ ,tnt_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+esc_n2p_p10_delta <- rowMeans(dmr_mCG_matrix[ ,ntp_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+esc_naive_delta <- rowMeans(dmr_mCG_matrix[ ,naive_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+esc_ips_delta <- rowMeans(dmr_mCG_matrix[ ,primed_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+esc_fib_delta <- rowMeans(dmr_mCG_matrix[ ,fib_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+
+all_dmrs$esc_n2p_d13_delta <- esc_n2p_d13_delta
+all_dmrs$esc_n2p_p10_delta <- esc_n2p_p10_delta
+all_dmrs$esc_ips_delta <- esc_ips_delta
+all_dmrs$esc_naive_delta <- esc_naive_delta
+#all_dmrs$esc_fib_delta <- esc_fib_delta
+
+all_dmrs$loci <- gr_to_loci(all_dmrs)
+
+```
+
+
+Plot DMR delta values
+```{r, cache=TRUE}
+delta_df <- data.frame(TNT=all_dmrs$esc_n2p_d13_delta,
+                      NtP=all_dmrs$esc_n2p_p10_delta,
+                      Primed=all_dmrs$esc_ips_delta,
+                      Naive=all_dmrs$esc_naive_delta,
+                      #Fibroblast=esc_fib_delta,
+                      class=all_dmrs$class)
+
+delta_df_melt <- reshape2::melt(delta_df)
+
+delta_df_melt$variable <- factor(delta_df_melt$variable,
+                                 levels=c("Primed", "Naive", "NtP", "TNT"))
+
+delta_df_melt$class <- factor(delta_df_melt$class)
+
+line_mm <- 0.5 / 2.835
+
+gg_delta_correct <- ggplot(delta_df_melt,
+                           aes(x = value, group=variable,
+                               color=variable,
+                               fill=variable)) +
+        geom_histogram(bins = 30, position="identity") +
+        geom_vline(xintercept = c(-.2, .2), linetype='dashed', size = line_mm) +
+        #geom_density() +
+        scale_color_manual(values=reprog_pal[c("Primed", "Naive", "TNT", "NtP")]) +
+        scale_fill_manual(values=reprog_pal[c("Primed", "Naive", "TNT", "NtP")]) +
+        facet_grid(class~variable, scales = "free_y") +
+        scale_x_continuous(limits = c(-1, 1)) +
+        xlab("DMR mCG delta \n(iPSC mCG - ESC mCG)") +
+        ylab("Number of DMRs") +
+        sams_pub_theme(legend_pos = 'right', x.text.angle = 0, hjust = 0.5)
+
+pdf("wgbs/plots/mcg_dmr_esc_delta_histograms.pdf", width = 5, height = 2)
+gg_delta_correct
+dev.off()
+
+gg_delta_correct_combined <- ggplot(delta_df_melt,
+                           aes(x = value, group=variable,
+                               color=variable,
+                               fill=variable)) +
+        geom_histogram(bins = 30, position="identity") +
+        geom_vline(xintercept = c(-.2, .2), linetype='dashed', size = line_mm) +
+        #geom_density() +
+        scale_color_manual(values=reprog_pal[c("Primed", "Naive", "TNT", "NtP")]) +
+        scale_fill_manual(values=reprog_pal[c("Primed", "Naive", "TNT", "NtP")]) +
+        facet_grid(variable~.) +
+        scale_x_continuous(limits = c(-1, 1)) +
+        xlab("DMR mCG delta \n(iPSC mCG - ESC mCG)") +
+        ylab("Number of DMRs") +
+        sams_pub_theme(legend_pos = 'right', x.text.angle = 0, hjust = 0.5)
+pdf("wgbs/plots/mcg_dmr_esc_delta_histograms_combined_vertical.pdf", width = 2.5, height = 3.25)
+gg_delta_correct_combined
+dev.off()
+```
+
+Assign DMRs as corrected or uncorrected and write bed files
+```{r, cache=TRUE}
+## Seperate if corrected or uncorrected
+all_dmrs$tnt_corrected <- abs(all_dmrs$esc_n2p_d13_delta) < 0.2
+all_dmrs$ntp_corrected <- abs(all_dmrs$esc_n2p_p10_delta) < 0.2
+all_dmrs$both_corrected <- (all_dmrs$tnt_corrected == TRUE) &
+    (all_dmrs$ntp_corrected == TRUE)
+
+all_dmrs$any_corrected <- (all_dmrs$tnt_corrected == TRUE) | (all_dmrs$ntp_corrected == TRUE)
+all_dmrs$correction_class <- str_c(all_dmrs$class, "_", all_dmrs$both_corrected)
+table(all_dmrs$correction_class)
+
+all_dmrs
+
+corrected_dmr_gr <- all_dmrs[all_dmrs$any_corrected == TRUE]
+corrected_dmr_df <- data.frame(chr=seqnames(corrected_dmr_gr),
+                               start=start(corrected_dmr_gr),
+                               end=end(corrected_dmr_gr),
+                               name=1:length(corrected_dmr_gr),
+                               score=corrected_dmr_gr$esc_ips_delta, strand="+")
+
+write.table(x = corrected_dmr_df, file = "wgbs/processed_data/corrected_dmrs.bed",
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+uncorrected_dmr_gr <- all_dmrs[all_dmrs$any_corrected == FALSE]
+uncorrected_dmr_df <- data.frame(chr=seqnames(uncorrected_dmr_gr),
+                                 start=start(uncorrected_dmr_gr),
+                                 end=end(uncorrected_dmr_gr),
+                               name=1:length(uncorrected_dmr_gr),
+                               score=uncorrected_dmr_gr$esc_ips_delta, strand="+")
+
+write.table(x = uncorrected_dmr_df, file = "wgbs/processed_data/uncorrected_dmrs.bed",
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+saveRDS(object = all_dmrs, file = "wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+```
+
+Plot corrected fraction of DMRs
+```{r, cache=TRUE}
+# barplot correction fraction
+
+correction_tab <- mcols(all_dmrs)[ ,c("tnt_corrected", "ntp_corrected", "class")] %>%
+        data.frame() %>% reshape2::melt(id.vars=c('class')) %>%
+    dplyr::group_by(class, variable, value) %>% dplyr::tally()
+
+# correction_tab <- data.frame(dmr_delta_dat[ ,c(1,7,8,9)]) %>%
+#         melt(id.vars=c("class", "element")) %>%
+#         group_by(class, element, variable, value) %>%
+#         tally()
+
+correction_tab$variable <- ifelse(test = correction_tab$variable == "tnt_corrected",
+                                  yes = "TNT-hiPSCs", no = "NtP-hiPSCs")
+
+correction_tab$group <- ifelse(test = grepl(pattern = "emory", x = correction_tab$class),
+                               yes = "Memory", no = "Abberant")
+
+bar_cols <- as.character(c(reprog_pal[7], vitC[2]))
+
+
+dmr_element_corrected_gg <- ggplot(correction_tab,
+                                   aes(x = variable, y=n, fill=value)) +
+        geom_bar(position = "fill", stat="identity", alpha=0.9) +
+        facet_grid(.~group+class, scales = "free") +
+        scale_fill_manual(values = bar_cols) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+              axis.text.y = element_text(size=10)) +
+        ylab("Proportion of DMRs") +
+        scale_y_continuous(expand = c(0,0)) +
+        sams_pub_theme(legend_pos = "right")
+
+dmr_element_corrected_gg
+
+pdf("wgbs/plots/dmr_class_corrected_barplots.pdf",
+    width = 4, height =2)
+dmr_element_corrected_gg
+dev.off()
+
+correction_tab2 <- mcols(all_dmrs)[ ,c("tnt_corrected", "ntp_corrected", "loci")] %>%
+        data.frame() %>% reshape2::melt(id.vars='loci') %>% 
+    dplyr::group_by(variable, value) %>% dplyr::tally()
+
+correction_tab2$variable <- ifelse(test = correction_tab2$variable == "tnt_corrected",
+                                   yes = "TNT-hiPSC", no = "NtP-hiPSC")
+
+dmr_element_corrected2_gg <- ggplot(correction_tab2,
+                                   aes(x = variable, y=n, fill=value)) +
+        geom_bar(position = "fill", stat="identity", alpha=0.9) +
+        scale_fill_manual(values = bar_cols) +
+      #  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),
+      #        axis.text.y = element_text(size=10)) +
+        ylab("Proportion of DMRs") +
+        coord_flip() +
+        scale_y_continuous(expand = c(0,0)) +
+        sams_pub_theme(legend_pos = "right", x.text.angle = 0, hjust = 0.5)
+
+pdf("wgbs/plots/dmr_corrected_barplots.pdf", width = 2.9, height = 1)
+dmr_element_corrected2_gg
+dev.off()
+
+sum(all_dmrs$tnt_corrected)
+sum(all_dmrs$ntp_corrected)
+
+pdf(file = "wgbs/plots/DMR_corrected_venn.pdf", width = 2, height = 2)
+VennDiagram::draw.pairwise.venn(area1 = sum(all_dmrs$tnt_corrected),
+                   area2 = sum(all_dmrs$ntp_corrected),
+                   cross.area = sum(all_dmrs$both_corrected), euler.d = TRUE)
+dev.off()
+
+```
+
+
+Plot DMR correction heatmap
+```{r, cache=TRUE}
+## Rank matrix by variance
+dmr_dat <- dmr_mCG_matrix
+var_dat <- dmr_mCG_matrix[ ,c(esc_libs, primed_libs)] %>% as.matrix() %>% rowVars()
+dmr_dat <- dmr_dat[order(var_dat, decreasing = FALSE), ]
+
+# Split heatmap by corrected and uncorrected
+corrected_ids <- all_dmrs$loci[all_dmrs$any_corrected == TRUE]
+uncorrected_ids <- all_dmrs$loci[all_dmrs$any_corrected == FALSE]
+
+dmr_dat_split <- rbind(dmr_dat[rownames(dmr_dat) %in% corrected_ids, ],
+                       dmr_dat[rownames(dmr_dat) %in% uncorrected_ids, ])
+
+heatmap_ind <- match(colnames(dmr_dat_split), mdat$Library_id)
+
+colnames(dmr_dat_split) <- mdat$Manuscript.Name[heatmap_ind]
+
+png(filename = "wgbs/plots/dmr_var_sorted_correction_split_heatmap.png",
+    height = 2.5, width = 3, units = "in", res = 300)
+pheatmap(dmr_dat_split, cluster_rows = FALSE, cluster_cols = FALSE, fontsize = 6,
+         show_rownames = FALSE, gaps_col = c(2,6,9,11,14),
+         gaps_row = length(corrected_ids), border_color = NA)
+dev.off()
+
+pdf(file = "wgbs/plots/dmr_var_sorted_correction_split_heatmap.pdf",
+    height = 2.5, width = 3)
+pheatmap(dmr_dat_split, cluster_rows = FALSE, cluster_cols = FALSE, fontsize = 6,
+         show_rownames = FALSE, gaps_col = c(2,6,9,11,14),
+         gaps_row = length(corrected_ids), border_color = NA)
+dev.off()
+
+gr_to_bed(gr = GRanges(seqnames = rownames(dmr_dat)),
+          out_path = str_c("wgbs/processed_data/all_DMR_variance_sort.bed"))
+
+
+```
+
+
+Profile plot of all samples against hESC mean
+```{r, cache=TRUE}
+stopifnot(all(rownames(dmr_mCG_matrix) == all_dmrs$loci))
+
+dmr_sample_delta_mat <- dmr_mCG_matrix - (rowMeans(dmr_mCG_matrix[ ,esc_libs]))
+
+dmr_sample_delta_mat <- dmr_sample_delta_mat[ ,!colnames(dmr_sample_delta_mat) %in% fib_libs]
+
+dmr_sample_delta_mat <- data.frame(dmr_sample_delta_mat)
+
+dmr_sample_delta_mat$class <- as.character(all_dmrs$class)
+
+dmr_sample_delta_mat <- reshape2::melt(dmr_sample_delta_mat)
+
+dmr_sample_delta_mat <- dmr_sample_delta_mat[!is.na(dmr_sample_delta_mat$value), ]
+
+head(dmr_sample_delta_mat)
+
+table(dmr_sample_delta_mat$variable)
+
+dmr_sample_delta_mat$sample_group <- NA
+
+sample_order <- c(esc_libs, primed_libs, naive_libs, tnt_libs, ntp_libs) %>% rev()
+
+dmr_sample_delta_mat$variable <- factor(dmr_sample_delta_mat$variable,
+                                        levels=sample_order)
+
+dmr_sample_delta_mat$sample_group[dmr_sample_delta_mat$variable %in% primed_libs] <- "Primed-hiPSC"
+dmr_sample_delta_mat$sample_group[dmr_sample_delta_mat$variable %in% tnt_libs] <- "TNT-hiPSC"
+dmr_sample_delta_mat$sample_group[dmr_sample_delta_mat$variable %in% ntp_libs] <- "NtP-hiPSC"
+dmr_sample_delta_mat$sample_group[dmr_sample_delta_mat$variable %in% esc_libs] <- "hESC"
+dmr_sample_delta_mat$sample_group[dmr_sample_delta_mat$variable %in% naive_libs] <- "Naive-hiPSC"
+
+dens_ind <- match(dmr_sample_delta_mat$variable, mdat$Library_id)
+dmr_sample_delta_mat$id <- mdat$Manuscript.Name[dens_ind]
+
+factor_ind <- match(sample_order, mdat$Library_id)
+dmr_sample_delta_mat$id <- factor(dmr_sample_delta_mat$id, levels=mdat$Manuscript.Name[factor_ind])
+
+pdf("wgbs/plots/mcg_dmr_esc_delta_density_sample_plots_.pdf", width = 3.5, height = 4)
+ggplot(data = dmr_sample_delta_mat,
+       mapping = aes(y = id, x = value, fill=stat(x))) +
+        #facet_grid(sample_group~., drop = TRUE, scales = "free_y") +
+        geom_density_ridges_gradient(height=3) +
+        scale_fill_gradient2(low = "firebrick", mid = "white", high = "firebrick", midpoint = 0) +
+        geom_vline(xintercept = c(-0.2, .2), alpha=0.4, linetype='dashed') +
+        scale_x_continuous(limits = c(-1, 1)) + xlab("Cell line DMR mCG - hESC mean") +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right", hjust = 0.5)
+dev.off()
+
+```
+
+DMR correction scatter-plots for hiPSCs relative to hESCs and fibroblasts
+```{r, cache=TRUE}
+# Make scatterplot of DMR correction
+
+primed_delta <- rowMeans(dmr_mCG_matrix[ ,primed_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+NtoP_delta <- rowMeans(dmr_mCG_matrix[ ,ntp_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+TNT_delta <- rowMeans(dmr_mCG_matrix[ ,tnt_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,esc_libs], na.rm = TRUE)
+
+fib_primed_delta <- rowMeans(dmr_mCG_matrix[ ,primed_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,fib_libs], na.rm = TRUE)
+fib_tnt_delta <- rowMeans(dmr_mCG_matrix[ ,tnt_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,fib_libs], na.rm = TRUE)
+fib_NtoP_delta <- rowMeans(dmr_mCG_matrix[ ,ntp_libs], na.rm = TRUE) - rowMeans(dmr_mCG_matrix[ ,fib_libs], na.rm = TRUE)
+
+dmr_delta_df <- data.frame(Primed_delta = primed_delta, TNT_delta = TNT_delta, NtoP_delta = NtoP_delta,
+                           fib_primed_delta = fib_primed_delta, fib_tnt_delta = fib_tnt_delta, fib_NtoP_delta = fib_NtoP_delta)
+
+dmr_delta_df$Class <- ifelse(test = primed_delta < 0, yes = "Hypo", no = "Hyper")
+
+primed_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = Primed_delta, y = fib_primed_delta, colour = Class, fill = Class)) +
+    geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+    geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+    scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+    ylab("Primed hiPSC mCG - Fibroblast mCG") +
+    xlab("Primed hiPSC mCG - hESC mCG") +
+    scale_colour_manual(values = vitC[c(6,1)]) +
+    #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+primed_scatter_gg <- ggExtra::ggMarginal(primed_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+
+tnt_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = TNT_delta, y = fib_tnt_delta, colour = Class, fill = Class)) +
+    geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+    geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+    scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+    ylab("TNT hiPSC mCG - Fibroblast mCG") +
+    xlab("TNT hiPSC mCG - hESC mCG") +
+    scale_colour_manual(values = vitC[c(6,1)]) +
+    #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+tnt_scatter_gg <- ggExtra::ggMarginal(tnt_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+
+ntp_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = NtoP_delta, y = fib_NtoP_delta, colour = Class, fill = Class)) +
+    geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+    geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+    scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+    ylab("NtP hiPSC mCG - Fibroblast mCG") +
+    xlab("NtP hiPSC mCG - hESC mCG") +
+    scale_colour_manual(values = vitC[c(6,1)]) +
+    #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+ntp_scatter_gg <- ggExtra::ggMarginal(ntp_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+
+pdf("wgbs/plots/donor_DMR_correction_scatterplots_with_histograms.pdf", height = 2, width = 6)
+plot_grid(primed_scatter_gg, tnt_scatter_gg, ntp_scatter_gg, ncol = 3)
+dev.off()
+```
+
+Enrichment tests for DMRs (First chunk run on remote server)
+```{r, eval=FALSE}
+source("R/server_libraries_and_functions.R")
+library(regioneR)
+
+## Load CG DMRs
+all_dmrs <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+
+## Load list of genomics elements
+all_elements_gr <- readRDS("resources/all_genomic_elements_granges_final.Rds")
+
+### Add CH-DMRs
+library(readxl)
+real_ch <- read_excel(path = "resources/nature13551-s3.xlsx")
+mCH_gr <- GRanges(seqnames = real_ch$chr,
+                   ranges = IRanges(start = as.numeric(real_ch$start),
+                                    end = as.numeric(real_ch$end)))
+mCH_gr$study <- real_ch$presence
+mCH_gr$class <- "CH-DMR"
+
+all_elements_gr <- c(all_elements_gr, mCH_gr)
+
+target_elements <- unique(all_elements_gr$class) %>% as.character()
+
+target_elements <- target_elements[!target_elements %in% c("Other", "Satellite", "snRNA", "tRNA", "srpRNA",
+                                                           "rRNA", "RC", "scRNA", "RNA")]
+
+unmappable_gr <- bed_to_gr("resources/d0_d3_d7_merged_zero_coverage_regions.bed")
+
+test_element_enrichment <- function(target_element="Enhancer", dmr_class=TRUE,
+                                    permutations=200, mask=unmappable_gr){
+        gc()
+        message(Sys.time())
+        message(str_c("Running ", target_element, " ", dmr_class, "..."))
+        gr_dmr <- all_dmrs[all_dmrs$any_corrected == dmr_class]
+        target_gr <- all_elements_gr[all_elements_gr$class == target_element]
+
+        set.seed(123)
+        perm_test_results <- regioneR::permTest(A=gr_dmr, B=target_gr,
+                                      alternative = "auto",
+                       randomize.function=regioneR::randomizeRegions,
+                       ntimes = permutations,
+                       evaluate.function=regioneR::numOverlaps,
+                       count.once = TRUE,
+                       genome="hg19",
+                       mask = unmappable_gr,
+                       allow.overlaps=FALSE,
+                       per.chromosome=TRUE,
+                       mc.cores=20,
+                       mc.set.seed=FALSE,
+                       force.parallel=TRUE)
+
+        lz <- localZScore(pt=perm_test_results, A=gr_dmr, B=target_gr,
+                          step = mean(width(gr_dmr)/2),
+                          window = 100000)
+
+        results <- list(pt=perm_test_results, lz=lz, element=target_element,
+                        class=dmr_class)
+        
+        message("Done!")
+        return(results)
+}
+
+test <- test_element_enrichment(target_element="Promoter", dmr_class=FALSE,
+                             permutations=100, mask=unmappable_gr)
+
+all_dmr_corrected_test <- lapply(X = target_elements,
+                                 FUN = test_element_enrichment,
+                                 dmr_class=TRUE)
+
+saveRDS(object = all_dmr_corrected_test,
+        file = "wgbs/processed_data/corrected_dmr_enrichment_tests.Rds")
+
+all_dmr_uncorrected_test <- lapply(X = target_elements,
+                                   FUN = test_element_enrichment,
+                                   dmr_class=FALSE)
+
+saveRDS(object = all_dmr_uncorrected_test,
+        file = "wgbs/processed_data/uncorrected_dmr_enrichment_tests.Rds")
+
+```
+
+Plot the enrichment results
+```{r, cache=TRUE}
+all_dmr_uncorrected_test <- readRDS("wgbs/processed_data/uncorrected_dmr_enrichment_tests.Rds")
+
+all_dmr_corrected_test <- readRDS("wgbs/processed_data/corrected_dmr_enrichment_tests.Rds")
+
+aggregate_enrich_results <- function(x, enrich_list=all_dmr_corrected_test){
+        dat <- enrich_list[[x]]
+
+        df <- data.frame(DMR=dat$class, Element=dat$element, olaps=dat$pt$`regioneR::numOverlaps`$observed,
+                         Pval=dat$pt$`regioneR::numOverlaps`$pval, Zscore=dat$pt$`regioneR::numOverlaps`$zscore)
+        return(df)
+}
+
+corrected_dat <- lapply(1:length(all_dmr_corrected_test), aggregate_enrich_results, enrich_list=all_dmr_corrected_test) %>%
+        do.call(rbind, .)
+
+uncorrected_dat <- lapply(1:length(all_dmr_uncorrected_test), aggregate_enrich_results, enrich_list=all_dmr_uncorrected_test) %>% do.call(rbind, .)
+
+all_enrich_dat <- rbind(corrected_dat, uncorrected_dat)
+
+all_enrich_dat <- all_enrich_dat[order(all_enrich_dat$Zscore, decreasing = TRUE), ]
+all_enrich_dat$Element <- factor(all_enrich_dat$Element,
+                                 levels=unique(rev(all_enrich_dat$Element[all_enrich_dat$DMR == TRUE])))
+
+#all_enrich_dat <- all_enrich_dat[all_enrich_dat$olaps > 10, ]
+all_enrich_dat$pc <- lapply(X = 1:nrow(all_enrich_dat), FUN = function(x){
+        ifelse(test = all_enrich_dat$DMR[x] == TRUE,
+               yes = all_enrich_dat$olaps[x] / length(all_dmrs[all_dmrs$any_corrected == TRUE]),
+               no = all_enrich_dat$olaps[x] / length(all_dmrs[all_dmrs$any_corrected == FALSE]))
+}) %>% unlist()
+
+
+all_enrich_dat$DMR <- ifelse(test = all_enrich_dat$DMR == TRUE, yes = "Corrected", no = "Uncorrected")
+
+gg_enrich <- ggplot(data = all_enrich_dat, aes(y = Zscore, x = Element, fill=DMR)) +
+        geom_col(position = 'dodge') +
+        scale_fill_manual(values = rev(bar_cols)) +
+        #facet_grid(.~DMR) +
+        coord_flip() +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+gg_enrich
+
+pdf("wgbs/plots/dmr_enrichment_zscore_barplots_all.pdf", width = 4, height = 2)
+gg_enrich
+dev.off()
+
+element_order <- c("Fibroblast_H3K9me3", "Fibroblast_PMD", "Fibroblast_LAD",
+                   "Constitutive_H3K9me3", "Constitutive_LAD",
+                   "ESC_H3K9me3", "ESC_LAD")
+
+all_enrich_dat$DMR <- factor(all_enrich_dat$DMR, levels=c("Corrected", "Uncorrected"))
+
+gg_enrich_sub <- ggplot(data = all_enrich_dat, aes(y = Zscore, x = Element, fill=DMR)) +
+        geom_col(position = 'dodge') +
+        #facet_wrap(DMR~.) +
+        scale_x_discrete(limits=element_order, drop=TRUE) +
+        scale_y_continuous(limits = c(-25, 55), breaks = c(-25, 0, 25, 50)) +
+        #coord_flip() +
+        scale_fill_manual(values = rev(bar_cols)) +
+        sams_pub_theme(x.text.angle = 45, legend_pos = "right")
+gg_enrich_sub
+
+pdf("wgbs/plots/dmr_enrichment_zscore_sub_barplots.pdf", width = 2.5, height = 2)
+gg_enrich_sub
+dev.off()
+
+gg_olaps <- ggplot(data = all_enrich_dat, aes(y = pc, x = Element)) +
+        geom_col() +
+        facet_wrap(DMR~.) +
+        #geom_hline(yintercept = 959) +
+        coord_flip()
+gg_olaps
+
+pdf("wgbs/plots/dmr_enrichment_zscore_barplots.pdf", width = 4, height = 1.75)
+gg_enrich
+gg_enrich_sub
+dev.off()
+```
+
+Plot the CG-DMRs in CH-DMRs
+```{r, cache=TRUE}
+real_ch <- read_excel(path = "resources/nature13551-s3.xlsx")
+mCH_gr <- GRanges(seqnames = real_ch$chr,
+                   ranges = IRanges(start = as.numeric(real_ch$start),
+                                    end = as.numeric(real_ch$end)))
+
+### PLot CH dmrs overlapping CG dmrs
+all_dmrs <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+all_dmrs$CH_olap <- overlapsAny(all_dmrs, mCH_gr)
+ch_olap_dat <- mcols(all_dmrs)[ ,colnames(mcols(all_dmrs)) %in% c("esc_ips_delta",
+                                                              "esc_n2p_d13_delta",
+                                                              "esc_n2p_p10_delta",
+                                                              "CH_olap",
+                                                              "class",
+                                                              "loci")] %>% data.frame()
+
+colnames(ch_olap_dat)[2:4] <- c("TNT-hiPSC", "NtP-hiPSC", "Primed-hiPSC")
+
+
+ch_olap_dat <- reshape2::melt(ch_olap_dat)
+ch_olap_dat$CH_olap <- ifelse(test = ch_olap_dat$CH_olap, yes = "CH-DMR_overlap", no = "No overlap")
+
+ch_olap_dat$CH_olap <- factor(ch_olap_dat$CH_olap, levels = c("FALSE", "TRUE"))
+ch_olap_dat$variable <- factor(ch_olap_dat$variable,
+                               levels = c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC"))
+
+pdf(file = "wgbs/plots/cg_dmr_delta_ch_olaps_violin.pdf", height = 2, width = 2.5)
+ggplot(ch_olap_dat, aes(x = variable, y = abs(value), fill=CH_olap)) +
+        #geom_point(alpha=0.05, position = 'jitter') +
+        geom_violin(scale = 'width', draw_quantiles = 0.5, alpha=0.7,
+                    trim = TRUE, size=0.2) +
+        scale_fill_pander()+ ylab("mCG delta in CG-DMRs") +
+        #geom_boxplot(color='black', outlier.alpha=0.05, outlier.size = 0.5) +
+        scale_y_continuous(breaks = seq(from=0, to=1, by=0.2)) +
+        #facet_grid(.~CH_olap) +
+        sams_pub_theme(legend_pos = "right")
+dev.off()
+
+
+## CG DMR in CH DMR sum
+cg_in_ch <- sum(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected) / 
+    length(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected)
+
+cg_no_ch <- sum(all_dmrs[all_dmrs$CH_olap == FALSE]$any_corrected) / 
+    length(all_dmrs[all_dmrs$CH_olap == FALSE]$any_corrected)
+
+ch_cor_df <- data.frame(group=c("CG-DMR overlap CH-DMR", "No CH-DMR overlap"),
+                        pc=c(cg_in_ch, cg_no_ch))
+
+pdf("wgbs/plots/cg_dmr_ch_olaps_barplot.pdf", width = 1, height = 2.5)
+ggplot(ch_cor_df, aes(x = group, y = pc*100)) +
+    geom_col() + scale_y_continuous(limits = c(0,100)) +
+    ylab("Proportion of CG-DMRs corrected (%)") +
+    geom_text(aes(label = sprintf("%.1f", pc*100), y= pc*100),  vjust = 3) +
+    sams_pub_theme()
+dev.off()
+```
+
+
+Plot H3K9me3 signal in corrected CG DMRs (first code block run on remote server)
+```{r, eval=FALSE}
+##### Get H3K9me3 in CG DMRs
+
+# And fold-enrichment in CG-DMRs
+##! Run this section on server
+all_dmrs <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+
+fibroblast <- c("ENCFF735TXC.bigWig")
+ESC <- c("ENCFF108MOZ.bigWig")
+Primed <- c("Primed_32F_H3K9me3_FE_sorted.bw", "Primed_38F_H3K9me3_FE_sorted.bw")
+Naive <- c("RL2011_2020_02_06_P33_32F_Naive_SR_clone1_H3K9me3_ChIP_S7_merged_lanes_dedup_FE.bigwig")
+TNT <- c("TNT_32F_H3K9me3_r1_FE_sorted.bw", "TNT_32F_H3K9me3_r2_FE_sorted.bw", "TNT_38F_H3K9me3_FE_sorted.bw")
+N2P <- c("N2P_38F_H3K9me3_r1_FE_sorted.bw", "N2P_38F_H3K9me3_r2_FE_sorted.bw")
+
+bw_files <- c(fibroblast, ESC, Primed, Naive, TNT, N2P)
+bw_files <- str_c("/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/ChIPseq/bigwigs/", bw_files)
+file.exists(bw_files)
+
+
+bw_path <- bw_files[1]
+gr <- all_dmrs
+
+get_dmr_means <- function(bw_path, gr){
+
+        id <- basename(bw_path)
+
+        bw_dat <- import.bw(con = bw_path, which = gr)
+
+        hits <- findOverlaps(gr, bw_dat, ignore.strand = TRUE)
+
+        ans <- gr
+        mcols(ans) <- aggregate(bw_dat, hits, score.mean = mean(score),
+                                drop = FALSE)
+
+        dat <- matrix(data = mcols(ans)$score.mean, nrow = length(gr),
+                      byrow = TRUE) %>% data.frame()
+
+        dat$class <- gr$class
+        dat$loci <- gr_to_loci(gr)
+        dat$id <- id
+        colnames(dat)[1] <- "value"
+        return(dat)
+}
+
+all_cg_window_dat <- mclapply(X = bw_files, FUN = get_dmr_means, mc.cores = 10,
+                              gr = all_dmrs)
+
+all_cg_window_dat <- do.call(rbind, all_cg_window_dat)
+
+write.table(all_cg_window_dat, "ChIPseq/processed_data/all_CG_DMR_h3k9me3_FE_means.txt",
+            quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+```
+
+
+```{r, cache=TRUE}
+fibroblast <- c("ENCFF735TXC.bigWig")
+ESC <- c("ENCFF108MOZ.bigWig")
+Primed <- c("Primed_32F_H3K9me3_FE_sorted.bw", "Primed_38F_H3K9me3_FE_sorted.bw")
+Naive <- c("RL2011_2020_02_06_P33_32F_Naive_SR_clone1_H3K9me3_ChIP_S7_merged_lanes_dedup_FE.bigwig")
+TNT <- c("TNT_32F_H3K9me3_r1_FE_sorted.bw", "TNT_32F_H3K9me3_r2_FE_sorted.bw", "TNT_38F_H3K9me3_FE_sorted.bw")
+N2P <- c("N2P_38F_H3K9me3_r1_FE_sorted.bw", "N2P_38F_H3K9me3_r2_FE_sorted.bw")
+
+
+all_cg_window_dat <- read.table("ChIPseq/processed_data/all_CG_DMR_h3k9me3_FE_means.txt")
+
+h3k9_dmr_mat <- reshape2::dcast(data = all_cg_window_dat[ ,c(1,3,4)], formula = loci~id)
+rownames(h3k9_dmr_mat) <- h3k9_dmr_mat$loci
+h3k9_dmr_mat$loci <- NULL
+colnames(h3k9_dmr_mat) <- str_remove(string = colnames(h3k9_dmr_mat), pattern = "merged_lanes_dedup_FE.bigwig")
+
+
+#all_cg_window_dat <- all_cg_window_dat[!grepl(pattern = "HDFa", x = all_cg_window_dat$id) &
+#                                               !grepl(pattern = "F_", x = all_cg_window_dat$id) |
+#                                               grepl(pattern = "ENCFF", x = all_cg_window_dat$id), ]
+
+TNT_corrected <- all_dmrs$loci[all_dmrs$tnt_corrected == TRUE]
+N2P_corrected <- all_dmrs$loci[all_dmrs$ntp_corrected == TRUE]
+
+all_cg_window_dat$TNT_corrected <- all_cg_window_dat$loci %in% TNT_corrected
+all_cg_window_dat$N2P_corrected <- all_cg_window_dat$loci %in% N2P_corrected
+
+#all_cg_window_dat$id %<>% str_remove_all(pattern = ".bigWig") %>%
+#        str_remove_all(pattern = "_H3K9me3_FE_sorted.bw")
+
+#all_cg_window_dat$id <- factor(all_cg_window_dat$id,
+#                               levels=c("ENCFF735TXC", "Primed", "N2P", "TNT", "ENCFF108MOZ"))
+
+all_cg_window_dat$id %>% unique()
+
+chip_keep <- list(Fibroblast=fibroblast, ESC=ESC, Primed=Primed, Naive=Naive, TNT=TNT, N2P=N2P) %>%
+        do.call(rbind, .) %>% reshape2::melt() %>% .[ ,c(1,3)] %>% unique()
+
+
+
+all_cg_window_dat <- all_cg_window_dat[all_cg_window_dat$id %in% chip_keep$value, ]
+
+
+chip_keep$group <- NA
+chip_keep$group[1] <- "Fibroblast"
+chip_keep$group[2] <- "ESC (H9)"
+chip_keep$group[3:nrow(chip_keep)] <- grepl(pattern = "32F",
+                                           x = chip_keep$value[3:nrow(chip_keep)]) %>%
+        ifelse(yes = "32F", no = "38F")
+
+
+ind <- match(all_cg_window_dat$id, chip_keep$value)
+all_cg_window_dat$group <- chip_keep$Var1[ind]
+all_cg_window_dat$donor <- chip_keep$group[ind]
+
+all_cg_window_dat$both_corrected <- all_cg_window_dat$TNT_corrected == TRUE |
+                all_cg_window_dat$N2P_corrected == TRUE
+
+# Get the mean for each group where there are replicates
+
+replicate_mean_dat <- all_cg_window_dat[ ,c(1,3,4,7:9)] %>%
+        dplyr::group_by(loci, group, donor, both_corrected) %>%
+        dplyr::summarize(Mean = mean(value, na.rm=TRUE)) %>% data.frame()
+
+replicate_mean_dat$group <- factor(replicate_mean_dat$group,
+                                   levels = c("Fibroblast", "ESC", "Primed", "N2P", "TNT", "Naive"))
+
+replicate_mean_dat$donor <- factor(replicate_mean_dat$donor,
+                                   levels = c("Fibroblast", "ESC (H9)", "32F", "38F"))
+
+replicate_mean_dat <- replicate_mean_dat[is.finite(replicate_mean_dat$Mean), ]
+replicate_mean_dat <- replicate_mean_dat[replicate_mean_dat$group != "Naive", ]
+
+replicate_mean_dat$group <- factor(replicate_mean_dat$group,
+                                   levels = c("Fibroblast", "Primed", "N2P", "TNT", "ESC"))
+
+
+pdf(file = "ChIPseq/plots/h3k9me3_in_CG_DMRs_boxplot.pdf", width = 1.5, height = 2.5)
+ggplot(replicate_mean_dat, aes(x = group, y=Mean, fill=group)) +
+        geom_boxplot(color='black', outlier.alpha=0.2, lwd = line_mm,
+                     outlier.shape = NA, notch = TRUE) +
+        #geom_boxplot(color='black', outlier.alpha=0.2, lwd = line_mm,notch = TRUE) +
+        ylab("H3K9me3 ChIP-seq fold enrichment in CG-DMRs") +
+        #facet_grid(.~donor, scales = "free_x", space = "free", drop = TRUE) +
+        sams_pub_theme()
+dev.off()
+
+## Stats test of groups
+
+#replicate_mean_dat$donor_group <- str_c(replicate_mean_dat$group, replicate_mean_dat$donor, sep = "_")
+
+#replicate_spread <- reshape2::recast(replicate_mean_dat[ ,c(1,5,6)], formula = loci~donor_group)
+
+replicate_spread <- reshape2::recast(replicate_mean_dat[ ,c(1,2,5)], formula = loci~group, fun.aggregate = mean)
+
+replicate_spread <- round(replicate_spread[ ,-1], digits = 3)
+
+run_wilcox <- function(x,y){
+        wt <- wilcox.test(x = log2(replicate_spread[ ,x]), conf.int = TRUE,
+                    y = log2(replicate_spread[ ,y]), alternative = 'greater',
+                    paired = TRUE)
+        #return(wt)
+        return(wt$p.value)
+}
+
+wilcox_df <- data.frame(Primed_v_NtP = run_wilcox(x = "Primed", y = "N2P"),
+           Primed_v_TNT = run_wilcox(x = "Primed", y = "TNT"),
+           TNT_v_ESC = run_wilcox(x = "TNT", y = "ESC"),
+           NtP_v_ESC = run_wilcox(x = "N2P", y = "ESC"),
+           Primed_v_ESC = run_wilcox(x = "Primed", y = "ESC"))
+```
+
+CH-DMR plots
+```{r, cache=TRUE}
+
+dfl <- readRDS("wgbs/processed_data/mCH_DMR_window_dat_all.Rds")
+
+id_ind <- match(dfl$id, basename(mdat$BSseq_CA))
+
+dfl$id <- mdat$Library_id[id_ind]
+
+CH_dat <- readxl::read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+CH_dmr$presence <- CH_dat$presence
+CH_dmr$loci <- gr_to_loci(CH_dmr)
+
+dfl$loci <- rownames(dfl)
+
+dfl$loci <- rep(gr_to_loci(CH_dmr), times=length(unique(dfl$id)))
+
+keep <- dfl$loci %in% CH_dmr$loci[CH_dmr$presence == "all iPSCs"]
+
+table(keep)
+
+dfl <- dfl[keep, ]
+
+dfl <- dfl[dfl$id %in% c(esc_libs, primed_libs, tnt_libs, ntp_libs), ]
+
+### Normalise to max (flank normalisation)
+max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, 1:30], na.rm = TRUE)
+    return(vec)
+}
+
+dfl_norm <- lapply(X = 1:nrow(dfl), max_norm) %>% do.call(rbind, .)
+dfl_norm$id <- dfl$id
+dfl_norm$loci <- dfl$loci
+
+ind <- match(dfl_norm$id, mdat$Library_id)
+
+dfl_norm$grp <- mdat$Group[ind]
+
+dfl_norm$progenitor <- mdat$Progenitor[ind]
+dfl_norm$batch <- mdat$Batch[ind]
+dfl_norm$lab <- mdat$Lab[ind]
+dfl_norm$background <- mdat$Background[ind]
+
+dfl_norm <- dfl_norm[dfl_norm$lab != "Smith", ] # No lambda spike to control non-conversion
+
+norm_dat <- reshape2::melt(dfl_norm)
+
+### heatmap each dmr
+library(dplyr)
+hm_dat <- norm_dat[norm_dat$variable %in% 11:20, ]
+hm_dat$grp <- as.character(hm_dat$grp)
+
+hm_dat <- hm_dat[ ,c(2,3,9)] %>% 
+    dplyr::group_by(loci, grp) %>%
+    dplyr::summarise(mean=mean(value, na.rm=TRUE))
+
+hm_dat <- hm_dat %>% tidyr::spread(grp, mean) %>% data.frame()
+rownames(hm_dat) <- hm_dat$loci
+hm_dat$loci <- NULL
+pheatmap(hm_dat, border_color = NA)
+
+pdf(file = "wgbs/plots/CH_DMR_mCA_flank_norm_heatmap.pdf", width = 2, height = 4)
+pheatmap(hm_dat, border_color = NA, show_rownames = FALSE)
+dev.off()
+
+up <- rownames(hm_dat)[hm_dat$Primed.hiPSC < hm_dat$hESC]
+
+up_gr <- GRanges(up)
+gr_to_bed(up_gr, out_path = "wgbs/processed_data/mCH_DMR_primed_demethylated.bed")
+
+head(norm_dat)
+norm_dat$up <- norm_dat$loci %in% up
+
+line_mm <- 0.5 / 2.835
+
+norm_dat$grp <- factor(norm_dat$grp, levels=rev(c("Primed-hiPSC", "NtP-hiPSC",
+                                                  "TNT-hiPSC", "hESC")))
+
+barplot(c(1,1,1,1,1,1), col=vitC); barplot(c(1,1,1,1,1), col=reprog_pal)
+pal <- rev(c(reprog_pal[c(1)], vitC[c(6,2)], reprog_pal[4]))
+
+gg_mch <- ggplot(data = norm_dat, mapping = aes(x = variable, y = value,
+                                                group=grp, col=grp, fill=grp)) +
+        stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+        #geom_smooth(na.rm = TRUE, span = 0.25) +
+        #stat_summary(geom = 'ribbon', fun.data = mean_se, alpha=0.2, col=NA, na.rm=TRUE) +
+        #scale_fill_manual(values = pal) +
+        #scale_color_manual(values = pal) +
+        scale_color_colorblind() +
+        facet_grid(up~., scales = "free_y") +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() +
+        theme(plot.background = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.grid.major = element_blank(),
+              panel.border = element_blank(),
+              strip.text.y = element_text(size = 6),
+              text = element_text(size=6),
+              strip.background = element_blank(),
+              legend.position = "right",
+              axis.line.x = element_line(color = 'black', size = line_mm),
+              axis.text.y = element_text(color = 'black'),
+              axis.line.y = element_line(color = 'black', size = line_mm),
+              axis.ticks.y = element_line(color = 'black', size = line_mm),
+              axis.ticks.x = element_blank(),
+              axis.text.x = element_blank())
+
+
+gg_mch
+ggsave(filename = "wgbs/plots/mch_dmr_summary_plot.pdf", width = 3, height = 2)
+
+```
+
+
+Plot H3K9me3 for CH-DMRs (first code block run on remote server)
+```{r, eval=FALSE}
+source("R/server_libraries_and_functions.R")
+
+gr <- bed_to_gr("resources/nature13551-s3.bed")
+
+bw_files <- list.files(pattern = "", full.names = TRUE, path = "ChIPseq/bigwigs")
+#H9_H3K9me3 <- "ENCFF108MOZ.bigWig"
+#fibroblast_H3K9me3 <- "ENCFF735TXC.bigWig"
+
+#bw_files <- c(bw_files, H9_H3K9me3, fibroblast_H3K9me3)
+
+bw_path <- bw_files[1]
+
+make_dmr_window_means <- function(bw_path, gr, bins=30){
+
+    id <- basename(bw_path)
+    gr_expand <- gr + width(gr)
+    gr_expand$loci <- gr_to_loci(gr_expand)
+    gr_tiles <- tile(gr_expand, n = bins)
+
+    add_loci_to_grl <- function(x){
+        grt <- gr_tiles[[x]]
+        grt$loci <- gr_to_loci(gr_expand[x])
+        return(grt)
+    }
+
+    gr_tiles <- lapply(1:length(gr_tiles), add_loci_to_grl) %>%
+        GRangesList() %>% unlist()
+
+    bw_dat <- import.bw(con = bw_path, which = gr_tiles)
+
+    hits <- findOverlaps(gr_tiles, bw_dat, ignore.strand = TRUE)
+
+    ans <- gr_tiles
+    mcols(ans) <- aggregate(bw_dat, hits, score.mean = mean(score),
+                            drop = FALSE)
+
+    dat <- matrix(data = mcols(ans)$score.mean, nrow = length(gr),
+                  byrow = TRUE) %>% data.frame()
+
+    dat$loci <- gr_to_loci(gr)
+    dat$id <- id
+
+    return(dat)
+}
+
+all_window_dat <- mclapply(X = bw_files, FUN = make_dmr_window_means, mc.cores = 18, gr = gr)
+
+
+all_window_df <- do.call(rbind, all_window_dat)
+
+write.table(all_window_df, "ChIPseq/processed_data/all_CH_DMR_h3k9me3_logFE_means.txt",
+            quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+```
+
+```{r, cache=TRUE}
+all_window_df <- read.table("ChIPseq/processed_data/all_CH_DMR_h3k9me3_logFE_means.txt")
+colnames(all_window_df) <- colnames(all_window_df) %>% str_remove(pattern = "X")
+#all_window_df$loci <- rownames(all_window_df)
+table(all_window_df$id)
+
+table(all_window_df$loci %in% CH_dmr$loci)
+
+head(all_window_df)
+
+### Check for infinate rows
+#keep <- is.finite(rowSums(all_window_df[ , 1:30]))
+#all_window_df <- all_window_df[keep, ]
+
+### Normalise to max (flank normalisation)
+min_norm <- function(x){
+        vec <- all_window_df[x, 1:30] +1 # stop dividing by zero
+        vec <- vec / min(vec, na.rm = TRUE)
+        #vec <- vec - 1
+        return(vec)
+}
+
+norm_window_df <- lapply(X = 1:nrow(all_window_df), min_norm) %>% do.call(rbind, .)
+norm_window_df$id <- all_window_df$id
+norm_window_df$loci <- all_window_df$loci
+
+### Get relative mean for each sample
+sample_ids <- unique(norm_window_df$id)
+
+
+## Filter for plotted CH DMRs
+loci_class <- norm_dat[ ,c("loci", "up")] %>% unique()
+norm_window_df <- norm_window_df[norm_window_df$loci %in% loci_class$loci, ]
+
+
+ind <- match(norm_window_df$loci, loci_class$loci)
+norm_window_df$up <- loci_class$up[ind]
+head(norm_window_df)
+
+calc_dmr_means_scaled <- function(id){
+        df <- norm_window_df[norm_window_df$id == id, ]
+        #keep <- is.finite(rowSums(df[ ,1:30]))
+        #df <- df[keep, ]
+        sample_means_up <- colMeans(df[df$up == TRUE, 1:30], na.rm = TRUE)
+        sample_means_up <- sample_means_up - (min(sample_means_up) -1)
+
+        sample_means_down <- colMeans(df[df$up == FALSE, 1:30], na.rm = TRUE)
+        sample_means_down <- sample_means_down - (min(sample_means_down) -1)
+
+        out_df <- rbind(sample_means_up, sample_means_down) %>% data.frame()
+        out_df$direction <- c("Up", "Down")
+        out_df$id <- id
+        return(out_df)
+}
+
+norm_window_scaled_df <- lapply(sample_ids, calc_dmr_means_scaled) %>%
+        do.call(rbind, .) %>% data.frame()
+
+window_melt <- reshape2::melt(norm_window_scaled_df)
+#window_melt <- melt(all_window_df)
+head(window_melt)
+window_melt$variable <- str_remove(string = window_melt$variable, pattern = "X")
+window_melt$variable <- as.numeric(window_melt$variable)
+
+window_melt$pooled <- !grepl(pattern = "F_", x = window_melt$id)
+#window_melt <- window_melt[window_melt$loci %in% norm_dat$loci, ]
+
+#window_melt[window_melt$id == "ENCFF067LWX.bigWig", ]$value <-
+#    log(window_melt[window_melt$id == "ENCFF067LWX.bigWig", ]$value +1)
+
+ids <- unique(window_melt$id)
+id <- ids[1]
+
+#window_melt <- window_melt[window_melt$pooled == TRUE, ]
+
+fibroblast <- c("ENCFF735TXC.bigWig")
+ESC <- c("ENCFF108MOZ.bigWig")
+Primed <- c("Primed_32F_H3K9me3_FE_sorted.bw", "Primed_38F_H3K9me3_FE_sorted.bw")
+Naive <- c("RL2011_2020_02_06_P33_32F_Naive_SR_clone1_H3K9me3_ChIP_S7_merged_lanes_dedup_FE.bigwig")
+TNT <- c("TNT_32F_H3K9me3_r1_FE_sorted.bw", "TNT_32F_H3K9me3_r2_FE_sorted.bw", "TNT_38F_H3K9me3_FE_sorted.bw")
+N2P <- c("N2P_38F_H3K9me3_r1_FE_sorted.bw", "N2P_38F_H3K9me3_r2_FE_sorted.bw")
+
+bw_files <- c(fibroblast, ESC, Primed, Naive, TNT, N2P)
+
+
+
+chip_keep <- list(Fibroblast=fibroblast, ESC=ESC, Primed=Primed, Naive=Naive, TNT=TNT, N2P=N2P) %>%
+        do.call(rbind, .) %>% reshape2::melt() %>% .[ ,c(1,3)] %>% unique()
+
+window_melt <- window_melt[window_melt$id %in% chip_keep$value, ]
+
+ind <- match(window_melt$id, chip_keep$value)
+window_melt$group <- chip_keep$Var1[ind]
+
+gg_mch_chip <- ggplot(data = window_melt, mapping = aes(x = variable, y = value,
+                                                group=group, col=group, fill=group)) +
+        facet_grid(direction~., scales = "free_y") +
+    stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+    #geom_smooth(na.rm = TRUE, span = 0.25) +
+    #stat_summary(geom = 'ribbon', fun.data = mean_se, alpha=0.2, na.rm=TRUE) +
+    #scale_fill_manual(values = pal) +
+    #scale_color_manual(values = pal) +
+    #scale_color_colorblind() +
+    ylab("Normalised H3K9me3 ChIP-seq enrichment") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() +
+    theme(plot.background = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+
+gg_mch_chip
+
+ggsave(filename = "ChIPseq/plots/mch_dmr_h3k9me3_summary_plot.pdf", width = 3.5, height = 2)
+
+pdf("wgbs/plots/mch_dmr_summary_plot.pdf", width = 2.75, height = 4)
+plot_grid(gg_mch, gg_mch_chip, align = "hv", ncol = 1)
+dev.off()
+```
+
+Session info
+```{r}
+sessionInfo()
+```
+
