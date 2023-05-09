@@ -126,7 +126,7 @@ gg_delta_correct_combined
 dev.off()
 ```
 
-```{r}
+```{r, cache=TRUE}
 wb_fig3 <- openxlsx::createWorkbook()
 
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3c")
@@ -207,7 +207,7 @@ dmr_element_corrected_gg
 dev.off()
 ```
 
-```{r}
+```{r, cache=TRUE}
 wb_ed_fig3 <- openxlsx::createWorkbook()
 
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3f")
@@ -215,7 +215,7 @@ openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3f",
                     x = dmr_element_corrected_gg$data)
 ```
 
-```{r}
+```{r, cache=TRUE}
 correction_tab2 <- mcols(all_dmrs)[ ,c("tnt_corrected", "ntp_corrected", "loci")] %>%
         data.frame() %>% reshape2::melt(id.vars='loci') %>% 
     dplyr::group_by(variable, value) %>% dplyr::tally()
@@ -244,14 +244,14 @@ sum(all_dmrs$ntp_corrected)
 dmr_element_corrected2_gg
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3b")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3b",
                     x = dmr_element_corrected2_gg$data)
 ```
 
 Venn diagram of corrected DMR overlaps
-```{r}
+```{r, cache=TRUE}
 venn_df <- data.frame(tnt=sum(all_dmrs$tnt_corrected),
                       ntp=sum(all_dmrs$ntp_corrected),
                       olap=sum(all_dmrs$both_corrected))
@@ -267,7 +267,7 @@ VennDiagram::draw.pairwise.venn(area1 = venn_df$tnt,
                    cross.area = venn_df$olap, euler.d = TRUE)
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3e")
 openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3e",
                     x = venn_df)
@@ -314,7 +314,7 @@ pheatmap(dmr_dat_split, cluster_rows = FALSE, cluster_cols = FALSE, fontsize = 6
 
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3d")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3d",
                     x = dmr_dat_split)
@@ -377,7 +377,7 @@ dev.off()
 gg_ridges
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3c")
 openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3c",
                     x = gg_ridges$data)
@@ -439,7 +439,7 @@ dev.off()
 ```
 
 Primed-hiPSC
-```{r}
+```{r, cache=TRUE}
 primed_scatter_gg
 
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d1")
@@ -597,14 +597,14 @@ dev.off()
 gg_enrich
 ```
 
-```{r}
+```{r, cache=TRUE}
 wb_ed_fig4 <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4a")
 openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4a",
                     x = gg_enrich$data)
 ```
 
-```{r}
+```{r, cache=TRUE}
 element_order <- c("Fibroblast_H3K9me3", "Fibroblast_PMD", "Fibroblast_LAD",
                    "Constitutive_H3K9me3", "Constitutive_LAD",
                    "ESC_H3K9me3", "ESC_LAD")
@@ -640,7 +640,7 @@ dev.off()
 gg_enrich_sub
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3e")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3e",
                     x = gg_enrich_sub$data)
@@ -690,14 +690,14 @@ dev.off()
 gg_ch_olap_violin
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4c")
 openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4c",
                     x = gg_ch_olap_violin$data)
 ```
 
 CG DMR in CH DMR sum
-```{r}
+```{r, cache=TRUE}
 ## CG DMR in CH DMR sum
 cg_in_ch <- sum(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected) / 
     length(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected)
@@ -722,7 +722,7 @@ ch_dmr_olap_count
 ```
 
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4b")
 openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4b",
                     x = ch_dmr_olap_count$data)
@@ -881,7 +881,7 @@ wilcox_df <- data.frame(Primed_v_NtP = run_wilcox(x = "Primed", y = "N2P"),
 h3k9me3_boxplots
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3f")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3f",
                     x = h3k9me3_boxplots$data)
@@ -1063,13 +1063,13 @@ dev.off()
 pheatmap(hm_dat, border_color = NA)
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4d")
 openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4d",
                     x = hm_dat)
 ```
 
-```{r}
+```{r, cache=TRUE}
 up <- rownames(hm_dat)[hm_dat$Primed.hiPSC < hm_dat$hESC]
 
 up_gr <- GRanges(up)
@@ -1313,7 +1313,7 @@ plot_grid(gg_mch, gg_mch_chip, align = "hv", ncol = 1)
 dev.off()
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3h")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3h",
                     x = gg_mch_chip$data)
@@ -1324,7 +1324,7 @@ openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4e2",
 ```
 
 ICR plots for Fig. 3j and Fig. S4
-```{r}
+```{r, cache=TRUE}
 icr_gr <- readRDS("resources/imprint_control_regions_granges_hg19.Rds")
 icr_mCG <- readRDS("wgbs/processed_data/icr_mcg_all.Rds")
 
@@ -1392,14 +1392,14 @@ gg_icr_endpoint_box_maternal
 
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3j")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3j",
                     x = gg_icr_endpoint_box_maternal$data)
 ```
 
 Do some 'wider' statistics for ICRs, as asked by reviewer 4
-```{r}
+```{r, cache=TRUE}
 icr_df <- icr_mCG[ ,c("RL415", "RL702", icr_endpoint)] %>% data.frame()
 
 ## Setup anova for each ICR
@@ -1459,7 +1459,7 @@ dev.off()
 icr_hm
 ```
 
-```{r}
+```{r, cache=TRUE}
 wb_ed_fig6 <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb_ed_fig6, sheetName = "Fig_6a")
 openxlsx::writeData(wb = wb_ed_fig6, sheet = "Fig_6a",
@@ -1467,7 +1467,7 @@ openxlsx::writeData(wb = wb_ed_fig6, sheet = "Fig_6a",
 ```
 
 Plot FACS sorted cell data for NSC differentiations
-```{r, fig.width=2, fig.height=4}
+```{r, cache=TRUE, fig.width=2, fig.height=4}
 nsc_dat <- read.csv(file = "differentiation_expts/NSC_facs_daniel_20221102.csv", header = FALSE)
 
 
@@ -1518,14 +1518,14 @@ dev.off()
 gg_msc
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3m")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3m",
                     x = gg_msc$data)
 ```
 
 Plot NSC CG methylation in corrected CG DMRs
-```{r}
+```{r, cache=TRUE}
 
 # Import the methylation data ---------------------------------------------
 
@@ -1582,14 +1582,14 @@ pheatmap(all_mCG[ind, ],
 dev.off()
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3o")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3o",
                     x = all_mCG[ind, ])
 ```
 
 NSC CG methylation in CH-DMRs
-```{r}
+```{r, cache=TRUE}
 #CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
 CH_dmr <- bed_to_gr("wgbs/processed_data/mCH_DMR_primed_demethylated.bed")
 
@@ -1719,18 +1719,17 @@ gg_nsc_mch_dmr <- ggplot(data = norm_dat2, mapping = aes(x = variable, y = scale
 gg_nsc_mch_dmr
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3p")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3p",
                     x = gg_nsc_mch_dmr$data)
 ```
 
 Close out source data files
-```{r}
+```{r, cache=TRUE}
 openxlsx::saveWorkbook(wb = wb_fig3,
                        file = "Figure_3_source_data.xlsx", overwrite = TRUE)
 ```
-
 
 Session info
 ```{r}
