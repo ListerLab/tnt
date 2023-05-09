@@ -565,7 +565,6 @@ openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2b",
                     x = hm_df)
 ```
 
-
 Load the ICR data
 ```{r, cache=TRUE}
 icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
@@ -667,7 +666,7 @@ openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2f",
                     x = gg_icr_time_box$data)
 ```
 
-```{r}
+```{r, cache=TRUE}
 openxlsx::saveWorkbook(wb = wb_fig2,
                        file = "Figure_2_source_data.xlsx",
                        overwrite = TRUE)

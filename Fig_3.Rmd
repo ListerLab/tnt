@@ -1524,7 +1524,7 @@ openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3m",
                     x = gg_msc$data)
 ```
 
-
+Plot NSC CG methylation in corrected CG DMRs
 ```{r}
 
 # Import the methylation data ---------------------------------------------
@@ -1590,7 +1590,145 @@ openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3o",
 
 NSC CG methylation in CH-DMRs
 ```{r}
+#CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+CH_dmr <- bed_to_gr("wgbs/processed_data/mCH_DMR_primed_demethylated.bed")
 
+rds_paths <- c("wgbs/CG_bsobj/RL1812_2019_09_19_38F_NSCs_primed_p8_S3_all_lanes_merge_CG_bsseq_obj.Rds",
+               "wgbs/CG_bsobj/RL1811_2019_09_19_38F_NSCs_N2P_p8_S2_all_lanes_merge_CG_bsseq_obj.Rds",
+               "wgbs/CG_bsobj/RL702_all_lanes_merged_CG_bsseq_obj.Rds")
+
+make_window_matrix <- function(rds_path, gr, bins=30){
+
+    message(basename(rds_path))
+    
+    gr_expand <- gr + width(gr)
+    gr_expand$loci <- gr_to_loci(gr_expand)
+    gr_tiles <- tile(gr_expand, n = bins)
+
+    add_loci_to_grl <- function(x){
+        grt <- gr_tiles[[x]]
+        grt$loci <- gr_to_loci(gr_expand[x])
+        return(grt)
+    }
+
+    read_bs_obj <- function(rds_path){
+        stopifnot(file.exists(rds_path))
+        message(str_c("Reading ", rds_path))
+        message(Sys.time())
+        bs_obj <- readRDS(file = rds_path)
+
+        return(bs_obj)
+    }
+
+    # Calculate C coverage and methylation for ranges. Returns GRanges object
+    calc_mC_window <- function(bs_obj, gr){
+
+        message("Calculating coverage...")
+        gr$Cov <- getCoverage(BSseq = bs_obj, regions = gr, type = "Cov",
+                              what = "perRegionTotal")
+
+        message("Calculating M...")
+        gr$M <- getCoverage(BSseq = bs_obj, regions = gr, type = "M",
+                            what = "perRegionTotal")
+
+        message("Calculating methylation percentage...")
+        gr$pc <- gr$M / gr$Cov
+
+        return(gr)
+    }
+
+    gr_tiles <- lapply(1:length(gr_tiles), add_loci_to_grl)
+    gr_tiles <- GRangesList(gr_tiles)
+    gr_tiles <- unlist(gr_tiles)
+    
+    bs_obj <- read_bs_obj(rds_path)
+
+    mC_dat <- calc_mC_window(bs_obj = bs_obj, gr = gr_tiles)
+
+    dat <- matrix(data = mC_dat$pc, nrow = length(gr), byrow = TRUE)
+    
+    dat <- data.frame(dat)
+
+    rownames(dat) <- gr_to_loci(gr)
+    colnames(dat) <- 1:ncol(dat)
+    dat$id <- basename(rds_path)
+
+    return(dat)
+}
+
+dfl <- lapply(rds_paths, make_window_matrix, gr=CH_dmr)
+
+dfl <- do.call(rbind, dfl)
+
+saveRDS(dfl, "wgbs/processed_data/NSC_mCG_in_mCH_DMR_window_dat_all.Rds")
+
+id_ind <- match(dfl$id, basename(mdat$BSseq_CG))
+
+dfl$id <- mdat$Library_id[id_ind]
+
+### Normalise to max (flank normalisation)
+max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, 1:30], na.rm = TRUE)
+    return(vec)
+}
+
+dfl_norm <- lapply(X = 1:nrow(dfl), max_norm) %>% do.call(rbind, .)
+dfl_norm$id <- dfl$id
+dfl_norm$loci <- dfl$loci
+
+norm_dat <- reshape2::melt(dfl_norm)
+
+norm_dat2 <- norm_dat %>% dplyr::group_by(id, variable) %>%
+    dplyr::summarise(value=mean(.data$value, na.rm=TRUE))
+
+norm_dat2 <- data.frame(norm_dat2)
+
+## Scale to max=1 for flank normalisation to show relative mCG difference
+max_norm2 <- function(id){
+    dat_sub <- norm_dat2[norm_dat2$id == id, ]
+    dat_sub$scaled <- dat_sub$value / max(dat_sub$value, na.rm = TRUE)
+    return(dat_sub)
+}
+
+norm_dat2 <- lapply(unique(norm_dat2$id), max_norm2) %>% do.call(rbind, .)
+
+gg_nsc_mch_dmr <- ggplot(data = norm_dat2, mapping = aes(x = variable, y = scaled,
+                                                        group=id, fill=id,
+                                                        colour=id)) +
+        geom_line() +
+        scale_color_colorblind() +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() +
+        theme(plot.background = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.grid.major = element_blank(),
+              panel.border = element_blank(),
+              strip.text.y = element_text(size = 6),
+              text = element_text(size=6),
+              strip.background = element_blank(),
+              legend.position = "right",
+              axis.line.x = element_line(color = 'black', size = line_mm),
+              axis.text.y = element_text(color = 'black'),
+              axis.line.y = element_line(color = 'black', size = line_mm),
+              axis.ticks.y = element_line(color = 'black', size = line_mm),
+              axis.ticks.x = element_blank(),
+              axis.text.x = element_blank())
+
+gg_nsc_mch_dmr
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3p")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3p",
+                    x = gg_nsc_mch_dmr$data)
+```
+
+Close out source data files
+```{r}
+openxlsx::saveWorkbook(wb = wb_fig3,
+                       file = "Figure_3_source_data.xlsx", overwrite = TRUE)
 ```
 
 
