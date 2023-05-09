@@ -71,7 +71,7 @@ all_dmrs$loci <- gr_to_loci(all_dmrs)
 
 
 Plot DMR delta values
-```{r, cache=TRUE}
+```{r, cache=TRUE, warning=FALSE}
 delta_df <- data.frame(TNT=all_dmrs$esc_n2p_d13_delta,
                       NtP=all_dmrs$esc_n2p_p10_delta,
                       Primed=all_dmrs$esc_ips_delta,
@@ -126,6 +126,14 @@ gg_delta_correct_combined
 dev.off()
 ```
 
+```{r}
+wb_fig3 <- openxlsx::createWorkbook()
+
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3c")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3c",
+                    x = gg_delta_correct_combined$data)
+```
+
 Assign DMRs as corrected or uncorrected and write bed files
 ```{r, cache=TRUE}
 ## Seperate if corrected or uncorrected
@@ -171,19 +179,14 @@ correction_tab <- mcols(all_dmrs)[ ,c("tnt_corrected", "ntp_corrected", "class")
         data.frame() %>% reshape2::melt(id.vars=c('class')) %>%
     dplyr::group_by(class, variable, value) %>% dplyr::tally()
 
-# correction_tab <- data.frame(dmr_delta_dat[ ,c(1,7,8,9)]) %>%
-#         melt(id.vars=c("class", "element")) %>%
-#         group_by(class, element, variable, value) %>%
-#         tally()
-
 correction_tab$variable <- ifelse(test = correction_tab$variable == "tnt_corrected",
                                   yes = "TNT-hiPSCs", no = "NtP-hiPSCs")
 
-correction_tab$group <- ifelse(test = grepl(pattern = "emory", x = correction_tab$class),
+correction_tab$group <- ifelse(test = grepl(pattern = "emory",
+                                            x = correction_tab$class),
                                yes = "Memory", no = "Abberant")
 
 bar_cols <- as.character(c(reprog_pal[7], vitC[2]))
-
 
 dmr_element_corrected_gg <- ggplot(correction_tab,
                                    aes(x = variable, y=n, fill=value)) +
@@ -202,7 +205,17 @@ pdf("wgbs/plots/dmr_class_corrected_barplots.pdf",
     width = 4, height =2)
 dmr_element_corrected_gg
 dev.off()
+```
 
+```{r}
+wb_ed_fig3 <- openxlsx::createWorkbook()
+
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3f")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3f",
+                    x = dmr_element_corrected_gg$data)
+```
+
+```{r}
 correction_tab2 <- mcols(all_dmrs)[ ,c("tnt_corrected", "ntp_corrected", "loci")] %>%
         data.frame() %>% reshape2::melt(id.vars='loci') %>% 
     dplyr::group_by(variable, value) %>% dplyr::tally()
@@ -228,14 +241,37 @@ dev.off()
 sum(all_dmrs$tnt_corrected)
 sum(all_dmrs$ntp_corrected)
 
-pdf(file = "wgbs/plots/DMR_corrected_venn.pdf", width = 2, height = 2)
-VennDiagram::draw.pairwise.venn(area1 = sum(all_dmrs$tnt_corrected),
-                   area2 = sum(all_dmrs$ntp_corrected),
-                   cross.area = sum(all_dmrs$both_corrected), euler.d = TRUE)
-dev.off()
-
+dmr_element_corrected2_gg
 ```
 
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3b")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3b",
+                    x = dmr_element_corrected2_gg$data)
+```
+
+Venn diagram of corrected DMR overlaps
+```{r}
+venn_df <- data.frame(tnt=sum(all_dmrs$tnt_corrected),
+                      ntp=sum(all_dmrs$ntp_corrected),
+                      olap=sum(all_dmrs$both_corrected))
+
+pdf(file = "wgbs/plots/DMR_corrected_venn.pdf", width = 2, height = 2)
+VennDiagram::draw.pairwise.venn(area1 = venn_df$tnt,
+                   area2 = venn_df$ntp,
+                   cross.area = venn_df$olap, euler.d = TRUE)
+dev.off()
+
+VennDiagram::draw.pairwise.venn(area1 = venn_df$tnt,
+                   area2 = venn_df$ntp,
+                   cross.area = venn_df$olap, euler.d = TRUE)
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3e")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3e",
+                    x = venn_df)
+```
 
 Plot DMR correction heatmap
 ```{r, cache=TRUE}
@@ -272,9 +308,17 @@ dev.off()
 gr_to_bed(gr = GRanges(seqnames = rownames(dmr_dat)),
           out_path = str_c("wgbs/processed_data/all_DMR_variance_sort.bed"))
 
+pheatmap(dmr_dat_split, cluster_rows = FALSE, cluster_cols = FALSE, fontsize = 6,
+         show_rownames = FALSE, gaps_col = c(2,6,9,11,14),
+         gaps_row = length(corrected_ids), border_color = NA)
 
 ```
 
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3d")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3d",
+                    x = dmr_dat_split)
+```
 
 Profile plot of all samples against hESC mean
 ```{r, cache=TRUE}
@@ -315,8 +359,9 @@ dmr_sample_delta_mat$id <- mdat$Manuscript.Name[dens_ind]
 factor_ind <- match(sample_order, mdat$Library_id)
 dmr_sample_delta_mat$id <- factor(dmr_sample_delta_mat$id, levels=mdat$Manuscript.Name[factor_ind])
 
-pdf("wgbs/plots/mcg_dmr_esc_delta_density_sample_plots_.pdf", width = 3.5, height = 4)
-ggplot(data = dmr_sample_delta_mat,
+
+
+gg_ridges <- ggplot(data = dmr_sample_delta_mat,
        mapping = aes(y = id, x = value, fill=stat(x))) +
         #facet_grid(sample_group~., drop = TRUE, scales = "free_y") +
         geom_density_ridges_gradient(height=3) +
@@ -324,8 +369,18 @@ ggplot(data = dmr_sample_delta_mat,
         geom_vline(xintercept = c(-0.2, .2), alpha=0.4, linetype='dashed') +
         scale_x_continuous(limits = c(-1, 1)) + xlab("Cell line DMR mCG - hESC mean") +
         sams_pub_theme(x.text.angle = 0, legend_pos = "right", hjust = 0.5)
+
+pdf("wgbs/plots/mcg_dmr_esc_delta_density_sample_plots_.pdf", width = 3.5, height = 4)
+gg_ridges
 dev.off()
 
+gg_ridges
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3c")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3c",
+                    x = gg_ridges$data)
 ```
 
 DMR correction scatter-plots for hiPSCs relative to hESCs and fibroblasts
@@ -381,6 +436,34 @@ ntp_scatter_gg <- ggExtra::ggMarginal(ntp_scatter_gg, groupColour = TRUE, groupF
 pdf("wgbs/plots/donor_DMR_correction_scatterplots_with_histograms.pdf", height = 2, width = 6)
 plot_grid(primed_scatter_gg, tnt_scatter_gg, ntp_scatter_gg, ncol = 3)
 dev.off()
+```
+
+Primed-hiPSC
+```{r}
+primed_scatter_gg
+
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d1")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d1",
+                    x = primed_scatter_gg$data)
+```
+
+TNT-hiPSC
+```{r}
+tnt_scatter_gg
+
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d2")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d2",
+                    x = tnt_scatter_gg$data)
+
+```
+
+NtP-hiPSC
+```{r}
+ntp_scatter_gg
+
+openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d3")
+openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d3",
+                    x = ntp_scatter_gg$data)
 ```
 
 Enrichment tests for DMRs (First chunk run on remote server)
@@ -506,12 +589,22 @@ gg_enrich <- ggplot(data = all_enrich_dat, aes(y = Zscore, x = Element, fill=DMR
         #facet_grid(.~DMR) +
         coord_flip() +
         sams_pub_theme(x.text.angle = 0, legend_pos = "right")
-gg_enrich
 
 pdf("wgbs/plots/dmr_enrichment_zscore_barplots_all.pdf", width = 4, height = 2)
 gg_enrich
 dev.off()
 
+gg_enrich
+```
+
+```{r}
+wb_ed_fig4 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4a")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4a",
+                    x = gg_enrich$data)
+```
+
+```{r}
 element_order <- c("Fibroblast_H3K9me3", "Fibroblast_PMD", "Fibroblast_LAD",
                    "Constitutive_H3K9me3", "Constitutive_LAD",
                    "ESC_H3K9me3", "ESC_LAD")
@@ -532,17 +625,25 @@ pdf("wgbs/plots/dmr_enrichment_zscore_sub_barplots.pdf", width = 2.5, height = 2
 gg_enrich_sub
 dev.off()
 
-gg_olaps <- ggplot(data = all_enrich_dat, aes(y = pc, x = Element)) +
-        geom_col() +
-        facet_wrap(DMR~.) +
-        #geom_hline(yintercept = 959) +
-        coord_flip()
-gg_olaps
+# gg_olaps <- ggplot(data = all_enrich_dat, aes(y = pc, x = Element)) +
+#         geom_col() +
+#         facet_wrap(DMR~.) +
+#         #geom_hline(yintercept = 959) +
+#         coord_flip()
+# gg_olaps
 
 pdf("wgbs/plots/dmr_enrichment_zscore_barplots.pdf", width = 4, height = 1.75)
 gg_enrich
 gg_enrich_sub
 dev.off()
+
+gg_enrich_sub
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3e")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3e",
+                    x = gg_enrich_sub$data)
 ```
 
 Plot the CG-DMRs in CH-DMRs
@@ -572,8 +673,7 @@ ch_olap_dat$CH_olap <- factor(ch_olap_dat$CH_olap, levels = c("FALSE", "TRUE"))
 ch_olap_dat$variable <- factor(ch_olap_dat$variable,
                                levels = c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC"))
 
-pdf(file = "wgbs/plots/cg_dmr_delta_ch_olaps_violin.pdf", height = 2, width = 2.5)
-ggplot(ch_olap_dat, aes(x = variable, y = abs(value), fill=CH_olap)) +
+gg_ch_olap_violin <- ggplot(ch_olap_dat, aes(x = variable, y = abs(value), fill=CH_olap)) +
         #geom_point(alpha=0.05, position = 'jitter') +
         geom_violin(scale = 'width', draw_quantiles = 0.5, alpha=0.7,
                     trim = TRUE, size=0.2) +
@@ -582,9 +682,22 @@ ggplot(ch_olap_dat, aes(x = variable, y = abs(value), fill=CH_olap)) +
         scale_y_continuous(breaks = seq(from=0, to=1, by=0.2)) +
         #facet_grid(.~CH_olap) +
         sams_pub_theme(legend_pos = "right")
+
+pdf(file = "wgbs/plots/cg_dmr_delta_ch_olaps_violin.pdf", height = 2, width = 2.5)
+gg_ch_olap_violin
 dev.off()
 
+gg_ch_olap_violin
+```
 
+```{r}
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4c")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4c",
+                    x = gg_ch_olap_violin$data)
+```
+
+CG DMR in CH DMR sum
+```{r}
 ## CG DMR in CH DMR sum
 cg_in_ch <- sum(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected) / 
     length(all_dmrs[all_dmrs$CH_olap == TRUE]$any_corrected)
@@ -595,15 +708,25 @@ cg_no_ch <- sum(all_dmrs[all_dmrs$CH_olap == FALSE]$any_corrected) /
 ch_cor_df <- data.frame(group=c("CG-DMR overlap CH-DMR", "No CH-DMR overlap"),
                         pc=c(cg_in_ch, cg_no_ch))
 
-pdf("wgbs/plots/cg_dmr_ch_olaps_barplot.pdf", width = 1, height = 2.5)
-ggplot(ch_cor_df, aes(x = group, y = pc*100)) +
+ch_dmr_olap_count <- ggplot(ch_cor_df, aes(x = group, y = pc*100)) +
     geom_col() + scale_y_continuous(limits = c(0,100)) +
     ylab("Proportion of CG-DMRs corrected (%)") +
     geom_text(aes(label = sprintf("%.1f", pc*100), y= pc*100),  vjust = 3) +
     sams_pub_theme()
+
+pdf("wgbs/plots/cg_dmr_ch_olaps_barplot.pdf", width = 1, height = 2.5)
+ch_dmr_olap_count
 dev.off()
+
+ch_dmr_olap_count
 ```
 
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4b")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4b",
+                    x = ch_dmr_olap_count$data)
+```
 
 Plot H3K9me3 signal in corrected CG DMRs (first code block run on remote server)
 ```{r, eval=FALSE}
@@ -659,7 +782,6 @@ write.table(all_cg_window_dat, "ChIPseq/processed_data/all_CG_DMR_h3k9me3_FE_mea
             quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
 ```
 
-
 ```{r, cache=TRUE}
 fibroblast <- c("ENCFF735TXC.bigWig")
 ESC <- c("ENCFF108MOZ.bigWig")
@@ -668,7 +790,6 @@ Naive <- c("RL2011_2020_02_06_P33_32F_Naive_SR_clone1_H3K9me3_ChIP_S7_merged_lan
 TNT <- c("TNT_32F_H3K9me3_r1_FE_sorted.bw", "TNT_32F_H3K9me3_r2_FE_sorted.bw", "TNT_38F_H3K9me3_FE_sorted.bw")
 N2P <- c("N2P_38F_H3K9me3_r1_FE_sorted.bw", "N2P_38F_H3K9me3_r2_FE_sorted.bw")
 
-
 all_cg_window_dat <- read.table("ChIPseq/processed_data/all_CG_DMR_h3k9me3_FE_means.txt")
 
 h3k9_dmr_mat <- reshape2::dcast(data = all_cg_window_dat[ ,c(1,3,4)], formula = loci~id)
@@ -676,32 +797,18 @@ rownames(h3k9_dmr_mat) <- h3k9_dmr_mat$loci
 h3k9_dmr_mat$loci <- NULL
 colnames(h3k9_dmr_mat) <- str_remove(string = colnames(h3k9_dmr_mat), pattern = "merged_lanes_dedup_FE.bigwig")
 
-
-#all_cg_window_dat <- all_cg_window_dat[!grepl(pattern = "HDFa", x = all_cg_window_dat$id) &
-#                                               !grepl(pattern = "F_", x = all_cg_window_dat$id) |
-#                                               grepl(pattern = "ENCFF", x = all_cg_window_dat$id), ]
-
 TNT_corrected <- all_dmrs$loci[all_dmrs$tnt_corrected == TRUE]
 N2P_corrected <- all_dmrs$loci[all_dmrs$ntp_corrected == TRUE]
 
 all_cg_window_dat$TNT_corrected <- all_cg_window_dat$loci %in% TNT_corrected
 all_cg_window_dat$N2P_corrected <- all_cg_window_dat$loci %in% N2P_corrected
 
-#all_cg_window_dat$id %<>% str_remove_all(pattern = ".bigWig") %>%
-#        str_remove_all(pattern = "_H3K9me3_FE_sorted.bw")
-
-#all_cg_window_dat$id <- factor(all_cg_window_dat$id,
-#                               levels=c("ENCFF735TXC", "Primed", "N2P", "TNT", "ENCFF108MOZ"))
-
 all_cg_window_dat$id %>% unique()
 
 chip_keep <- list(Fibroblast=fibroblast, ESC=ESC, Primed=Primed, Naive=Naive, TNT=TNT, N2P=N2P) %>%
         do.call(rbind, .) %>% reshape2::melt() %>% .[ ,c(1,3)] %>% unique()
 
-
-
 all_cg_window_dat <- all_cg_window_dat[all_cg_window_dat$id %in% chip_keep$value, ]
-
 
 chip_keep$group <- NA
 chip_keep$group[1] <- "Fibroblast"
@@ -709,7 +816,6 @@ chip_keep$group[2] <- "ESC (H9)"
 chip_keep$group[3:nrow(chip_keep)] <- grepl(pattern = "32F",
                                            x = chip_keep$value[3:nrow(chip_keep)]) %>%
         ifelse(yes = "32F", no = "38F")
-
 
 ind <- match(all_cg_window_dat$id, chip_keep$value)
 all_cg_window_dat$group <- chip_keep$Var1[ind]
@@ -719,39 +825,40 @@ all_cg_window_dat$both_corrected <- all_cg_window_dat$TNT_corrected == TRUE |
                 all_cg_window_dat$N2P_corrected == TRUE
 
 # Get the mean for each group where there are replicates
-
 replicate_mean_dat <- all_cg_window_dat[ ,c(1,3,4,7:9)] %>%
         dplyr::group_by(loci, group, donor, both_corrected) %>%
         dplyr::summarize(Mean = mean(value, na.rm=TRUE)) %>% data.frame()
 
 replicate_mean_dat$group <- factor(replicate_mean_dat$group,
-                                   levels = c("Fibroblast", "ESC", "Primed", "N2P", "TNT", "Naive"))
+                                   levels = c("Fibroblast", "ESC", "Primed",
+                                              "N2P", "TNT", "Naive"))
 
 replicate_mean_dat$donor <- factor(replicate_mean_dat$donor,
-                                   levels = c("Fibroblast", "ESC (H9)", "32F", "38F"))
+                                   levels = c("Fibroblast", "ESC (H9)",
+                                              "32F", "38F"))
 
 replicate_mean_dat <- replicate_mean_dat[is.finite(replicate_mean_dat$Mean), ]
 replicate_mean_dat <- replicate_mean_dat[replicate_mean_dat$group != "Naive", ]
 
 replicate_mean_dat$group <- factor(replicate_mean_dat$group,
-                                   levels = c("Fibroblast", "Primed", "N2P", "TNT", "ESC"))
+                                   levels = c("Fibroblast", "Primed", "N2P",
+                                              "TNT", "ESC"))
 
-
-pdf(file = "ChIPseq/plots/h3k9me3_in_CG_DMRs_boxplot.pdf", width = 1.5, height = 2.5)
-ggplot(replicate_mean_dat, aes(x = group, y=Mean, fill=group)) +
+h3k9me3_boxplots <- ggplot(replicate_mean_dat, aes(x = group, y=Mean, fill=group)) +
         geom_boxplot(color='black', outlier.alpha=0.2, lwd = line_mm,
                      outlier.shape = NA, notch = TRUE) +
         #geom_boxplot(color='black', outlier.alpha=0.2, lwd = line_mm,notch = TRUE) +
         ylab("H3K9me3 ChIP-seq fold enrichment in CG-DMRs") +
         #facet_grid(.~donor, scales = "free_x", space = "free", drop = TRUE) +
         sams_pub_theme()
+
+
+pdf(file = "ChIPseq/plots/h3k9me3_in_CG_DMRs_boxplot.pdf",
+    width = 1.5, height = 2.5)
+h3k9me3_boxplots
 dev.off()
 
 ## Stats test of groups
-
-#replicate_mean_dat$donor_group <- str_c(replicate_mean_dat$group, replicate_mean_dat$donor, sep = "_")
-
-#replicate_spread <- reshape2::recast(replicate_mean_dat[ ,c(1,5,6)], formula = loci~donor_group)
 
 replicate_spread <- reshape2::recast(replicate_mean_dat[ ,c(1,2,5)], formula = loci~group, fun.aggregate = mean)
 
@@ -770,6 +877,119 @@ wilcox_df <- data.frame(Primed_v_NtP = run_wilcox(x = "Primed", y = "N2P"),
            TNT_v_ESC = run_wilcox(x = "TNT", y = "ESC"),
            NtP_v_ESC = run_wilcox(x = "N2P", y = "ESC"),
            Primed_v_ESC = run_wilcox(x = "Primed", y = "ESC"))
+
+h3k9me3_boxplots
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3f")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3f",
+                    x = h3k9me3_boxplots$data)
+```
+
+Calculate mCA methylayion in CH-DMRs. 
+This code was not run locally and needs a high memory machine. 
+```{r, eval=FALSE}
+CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+
+make_window_matrix_nc_corrected <- function(x, gr, bins=30, nc_correct=TRUE,
+                                            nc_contig="chrL"){
+
+    rds_path <- mCA_files[x]
+    message(basename(rds_path))
+    
+    #id <- mdat_wgbs$Library_id[x]
+    gr_expand <- gr + width(gr)
+    gr_expand$loci <- gr_to_loci(gr_expand)
+    gr_tiles <- tile(gr_expand, n = bins)
+
+    add_loci_to_grl <- function(x){
+        grt <- gr_tiles[[x]]
+        grt$loci <- gr_to_loci(gr_expand[x])
+        return(grt)
+    }
+
+    read_bs_obj <- function(rds_path){
+        stopifnot(file.exists(rds_path))
+        message(str_c("Reading ", rds_path))
+        message(Sys.time())
+        bs_obj <- readRDS(file = rds_path)
+
+        return(bs_obj)
+    }
+
+    # Calculate C coverage and methylation for ranges. Returns GRanges object
+    calc_mC_window <- function(bs_obj, gr){
+
+        message("Calculating coverage...")
+        gr$Cov <- getCoverage(BSseq = bs_obj, regions = gr, type = "Cov",
+                              what = "perRegionTotal")
+
+        message("Calculating M...")
+        gr$M <- getCoverage(BSseq = bs_obj, regions = gr, type = "M",
+                            what = "perRegionTotal")
+
+        message("Calculating methylation percentage...")
+        gr$pc <- gr$M / gr$Cov
+
+        return(gr)
+    }
+
+
+    gr_tiles <- lapply(1:length(gr_tiles), add_loci_to_grl) %>%
+        GRangesList() %>% unlist()
+
+    bs_obj <- read_bs_obj(rds_path)
+
+    mC_dat <- calc_mC_window(bs_obj = bs_obj, gr = gr_tiles)
+
+    dat <- matrix(data = mC_dat$pc, nrow = length(gr), byrow = TRUE)
+
+    # Correct for non-conversion
+    correct_nc <- function(bs_obj, nc_contig = "chrL"){
+
+        nc_obj <- chrSelectBSseq(BSseq = bs_obj, seqnames = nc_contig)
+        nc_cov <- getCoverage(BSseq = nc_obj, type = "Cov",
+                              what = "perBase")
+        nc_m <- getCoverage(BSseq = nc_obj, type = "M",
+                            what = "perBase")
+
+        nc_rate <- sum(nc_m) / sum(nc_cov)
+
+        return(nc_rate)
+    }
+
+    if (nc_correct == TRUE){
+        message("Correcting for non-conversion...")
+        nc_rate <- correct_nc(bs_obj = bs_obj, nc_contig = nc_contig)
+        dat <- dat - nc_rate
+        dat[dat < 0] <- 0
+    }
+
+    dat <- data.frame(dat)
+
+    rownames(dat) <- gr_to_loci(gr)
+    colnames(dat) <- 1:ncol(dat)
+    dat$id <- basename(rds_path)
+
+    return(dat)
+}
+
+mCA_files <- mdat_sub$BSseq_CA
+
+mdat_sub$Library_id[!file.exists(mCA_files)]
+
+mCA_files <- mCA_files[file.exists(mCA_files)]
+
+all(file.exists(mCA_files))
+
+dfl <- lapply(1:length(mCA_files), make_window_matrix_nc_corrected,
+              gr=CH_dmr)
+
+dfl <- do.call(rbind, dfl)
+
+saveRDS(dfl, "wgbs/processed_data/mCH_DMR_window_dat_all.Rds")
+
 ```
 
 CH-DMR plots
@@ -835,12 +1055,21 @@ hm_dat <- hm_dat[ ,c(2,3,9)] %>%
 hm_dat <- hm_dat %>% tidyr::spread(grp, mean) %>% data.frame()
 rownames(hm_dat) <- hm_dat$loci
 hm_dat$loci <- NULL
-pheatmap(hm_dat, border_color = NA)
 
 pdf(file = "wgbs/plots/CH_DMR_mCA_flank_norm_heatmap.pdf", width = 2, height = 4)
 pheatmap(hm_dat, border_color = NA, show_rownames = FALSE)
 dev.off()
 
+pheatmap(hm_dat, border_color = NA)
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4d")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4d",
+                    x = hm_dat)
+```
+
+```{r}
 up <- rownames(hm_dat)[hm_dat$Primed.hiPSC < hm_dat$hESC]
 
 up_gr <- GRanges(up)
@@ -891,6 +1120,15 @@ ggsave(filename = "wgbs/plots/mch_dmr_summary_plot.pdf", width = 3, height = 2)
 
 ```
 
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3g")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3g",
+                    x = gg_mch$data)
+
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4e")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4e",
+                    x = gg_mch$data)
+```
 
 Plot H3K9me3 for CH-DMRs (first code block run on remote server)
 ```{r, eval=FALSE}
@@ -977,11 +1215,9 @@ norm_window_df$loci <- all_window_df$loci
 ### Get relative mean for each sample
 sample_ids <- unique(norm_window_df$id)
 
-
 ## Filter for plotted CH DMRs
 loci_class <- norm_dat[ ,c("loci", "up")] %>% unique()
 norm_window_df <- norm_window_df[norm_window_df$loci %in% loci_class$loci, ]
-
 
 ind <- match(norm_window_df$loci, loci_class$loci)
 norm_window_df$up <- loci_class$up[ind]
@@ -1032,8 +1268,6 @@ N2P <- c("N2P_38F_H3K9me3_r1_FE_sorted.bw", "N2P_38F_H3K9me3_r2_FE_sorted.bw")
 
 bw_files <- c(fibroblast, ESC, Primed, Naive, TNT, N2P)
 
-
-
 chip_keep <- list(Fibroblast=fibroblast, ESC=ESC, Primed=Primed, Naive=Naive, TNT=TNT, N2P=N2P) %>%
         do.call(rbind, .) %>% reshape2::melt() %>% .[ ,c(1,3)] %>% unique()
 
@@ -1078,6 +1312,287 @@ pdf("wgbs/plots/mch_dmr_summary_plot.pdf", width = 2.75, height = 4)
 plot_grid(gg_mch, gg_mch_chip, align = "hv", ncol = 1)
 dev.off()
 ```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3h")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3h",
+                    x = gg_mch_chip$data)
+
+openxlsx::addWorksheet(wb_ed_fig4, sheetName = "Fig_4e2")
+openxlsx::writeData(wb = wb_ed_fig4, sheet = "Fig_4e2",
+                    x = gg_mch_chip$data)
+```
+
+ICR plots for Fig. 3j and Fig. S4
+```{r}
+icr_gr <- readRDS("resources/imprint_control_regions_granges_hg19.Rds")
+icr_mCG <- readRDS("wgbs/processed_data/icr_mcg_all.Rds")
+
+icr_endpoint <- c("RL417", "RL418", "RL1751_1771", "RL703",  ## Primed
+                    "RL1124", "RL1125", # TNT
+                    "RL936", "RL937", "RL837", #NtP
+                    "RL2351_merge", "RL2352_merge",
+                    "SRR1561745_merge", "SRS004213", "SRS114877",
+                    "SRS606777", "SRS606778") ## ESC
+
+icr_endpoint_df <- icr_mCG[ ,icr_endpoint] %>% data.frame()
+icr_endpoint_df$class <- as.character(icr_gr$Categoly)
+
+icr_endpoint_df <- reshape2::melt(icr_endpoint_df)
+
+icr_endpoint_ind <- match(icr_endpoint_df$variable, mdat$Library_id)
+icr_endpoint_ind2 <- match(icr_endpoint, mdat$Library_id)
+ 
+icr_endpoint_df$id <- factor(mdat$Manuscript.Name[icr_endpoint_ind],
+                         levels=mdat$Manuscript.Name[icr_endpoint_ind2])
+
+icr_endpoint_df$group <- factor(mdat$State[icr_endpoint_ind],
+                                levels = c("Primed", "TNT", "NtP",
+                                           "Naive", "ESC"))
+
+
+gg_icr_endpoint_box <- ggplot(icr_endpoint_df, aes(x = id, y = value,
+                                           fill=group, alpha=0.8)) +
+    geom_boxplot(outlier.shape = NA) +
+    facet_grid(class~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    scale_fill_manual(values = reprog_pal2[c(2,1,3,4)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+
+
+gg_icr_endpoint_box_maternal <- ggplot(icr_endpoint_df[icr_endpoint_df$class == "Maternal germline ICR", ],
+           aes(x = id, y = value, fill=group)) +
+    geom_boxplot(outlier.shape = NA, lwd=0.18) +
+    facet_grid(.~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    geom_hline(yintercept = c(0.25, 0.75), linetype="dashed", size=line_mm) +
+    scale_fill_manual(values = reprog_pal2[c(2,1,3,4)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+
+gg_icr_endpoint_box_NOT_maternal <- ggplot(icr_endpoint_df[icr_endpoint_df$class == "Maternal germline ICR", ],
+           aes(x = id, y = value, fill=group)) +
+    geom_boxplot(outlier.shape = NA, lwd=0.18) +
+    facet_grid(.~group, drop = TRUE, space = "free_x", scales = "free_x") +
+    geom_hline(yintercept = c(0.25, 0.75), linetype="dashed", size=line_mm) +
+    scale_fill_manual(values = reprog_pal2[c(2,1,3,4)]) +
+    ylab("ICR mCG/CG") + xlab("") +
+    sams_pub_theme()
+
+pdf("wgbs/plots/icr_endpoint_boxplots_maternal_germline.pdf",
+    height = 2, width = 3)
+gg_icr_endpoint_box_maternal
+dev.off()
+
+pdf("wgbs/plots/icr_endpoint_boxplots_NOT_maternal_germline.pdf",
+    height = 3.5, width = 3)
+gg_icr_endpoint_box_NOT_maternal
+dev.off()
+
+gg_icr_endpoint_box_maternal
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3j")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3j",
+                    x = gg_icr_endpoint_box_maternal$data)
+```
+
+Do some 'wider' statistics for ICRs, as asked by reviewer 4
+```{r}
+icr_df <- icr_mCG[ ,c("RL415", "RL702", icr_endpoint)] %>% data.frame()
+
+## Setup anova for each ICR
+
+groups <- factor(mdat$State[match(colnames(icr_df), mdat$Library_id)])
+
+design <- model.matrix(~ 0+groups)
+colnames(design) <- c("Fibroblast", "ESC", "NtP", "Primed", "TNT")
+
+contrast.matrix <- makeContrasts(Fibroblast - Primed,
+                                 Fibroblast - TNT,
+                                 Fibroblast - NtP,
+                                 Primed - TNT,
+                                 Primed - NtP,
+                                 levels = design)
+
+fit <- lmFit(icr_df, design)
+
+fit2 <- contrasts.fit(fit, contrast.matrix)
+
+fit2 <- eBayes(fit2)
+
+tt_primed <- topTable(fit2, coef=1, adjust="BH",
+                      number = nrow(icr_df), sort="none")
+#tt_primed <- tt_primed[match(rownames(icr_df), rownames(tt_primed)), ]
+
+tt_tnt <- topTable(fit2, coef=2, adjust="BH",
+                   number = nrow(icr_df), sort="none")
+tt_ntp <- topTable(fit2, coef=3, adjust="BH",
+                   number = nrow(icr_df), sort="none")
+
+row_dat <- data.frame(row.names = rownames(icr_df),
+                      class = icr_gr$Categoly,
+                      Primed = as.numeric(tt_primed$adj.P.Val < 0.05),
+                      TNT = as.numeric(tt_tnt$adj.P.Val < 0.05),
+                      NtP = as.numeric(tt_ntp$adj.P.Val < 0.05)
+                      )
+
+col_dat <- data.frame(row.names = colnames(icr_df), 
+                      group = groups)
+
+icr_hm <- pheatmap(icr_df[ ,1:11],
+         annotation_row = row_dat,
+         fontsize = 6,
+         annotation_col = col_dat,
+         labels_col = mdat$Manuscript.Name[match(colnames(icr_df),
+                                                 mdat$Library_id)][1:11],
+         labels_row = icr_gr$Name,
+         cluster_cols = FALSE, cluster_rows = FALSE,
+         gaps_col = c(2, 6, 8),
+         gaps_row = c(29, 31, 46))
+
+pdf("wgbs/plots/icr_endpoint_annotated_heatmap.pdf", width = 5)
+icr_hm
+dev.off()
+
+icr_hm
+```
+
+```{r}
+wb_ed_fig6 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "Fig_6a")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "Fig_6a",
+                    x = icr_df[ ,1:11])
+```
+
+Plot FACS sorted cell data for NSC differentiations
+```{r, fig.width=2, fig.height=4}
+nsc_dat <- read.csv(file = "differentiation_expts/NSC_facs_daniel_20221102.csv", header = FALSE)
+
+
+
+nsc_dat <- reshape2::melt(nsc_dat)
+grp <- str_split(string = nsc_dat$V1, pattern = "_", n = 2, simplify = TRUE) %>% data.frame()
+colnames(grp) <- c("Background", "Group")
+grp$Group[grp$Group == "d8"] <- "Primed-hiPSC"
+grp$Group[grp$Group == "TNT"] <- "TNT-hiPSC"
+grp$Group[grp$Group == "ESC"] <- "hESC"
+grp$Group[grp$Group == "hESC" & grp$Background == "Mel1"] <- "hESC (MEL1)" 
+grp$Group[grp$Group == "hESC" & grp$Background == "H9"] <- "hESC (H9)" 
+grp$Background[grp$Group %in% c("hESC (MEL1)", "hESC (H9)")] <- "hESC"
+
+nsc_dat <- cbind(nsc_dat, grp)
+
+nsc_dat$Background <- factor(nsc_dat$Background, levels=c("hESC", "32F", "Mel1", "MSC", "NHEK"))
+nsc_dat <- nsc_dat[!is.na(nsc_dat$value), ]
+
+nsc_dat <- nsc_dat[nsc_dat$V1 %in% c("32F_d8", "32F_TNT", "H9_ESC"), ]
+
+gg_msc <- ggplot(data = nsc_dat, aes(x = Group, y = value, fill=Group, colour="black")) +
+    geom_point(size=2, alpha=0.7, shape=21) +
+    scale_color_manual(values = c("#000000")) +
+    scale_fill_manual(values = c("#5B7876", "#5B7876", "#009e73", "#eebc4c")) +
+    stat_summary(fun.data=mean_sdl, fun.args = list(mult=1),
+                 geom="errorbar", color="black", width=0.1,
+                 position = position_nudge(x = 0.25)) +
+    stat_summary(fun=mean, geom="point", color="black",
+                 position = position_nudge(x = 0.25)) +
+    ylab("NCAM+ / FAP- cells (%)") + xlab("") +
+    facet_grid(.~Background, scales = "free_x", space = "free", drop = TRUE) +
+    scale_y_continuous(breaks = c(10,20,30,40,50,60)) +
+    theme_bw(base_size = 7, base_line_size = line_mm) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1,
+                                                 colour = 'black'),
+          plot.background = element_blank(),
+                      panel.grid.minor = element_blank(),
+                      panel.grid.major.y = element_line(size = line_mm, colour = "grey30", linetype = "dotted"),
+          legend.position = "none")
+
+nsc_dat
+
+pdf(file = "differentiation_expts/nsc_ncam_fap_plots.pdf", width = 4, height = 3.5)
+gg_msc
+dev.off()
+
+gg_msc
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3m")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3m",
+                    x = gg_msc$data)
+```
+
+
+```{r}
+
+# Import the methylation data ---------------------------------------------
+
+# Create a list of the BSseq objects that have the CG methylation data
+bs_obj_list <- c("wgbs/CG_bsobj/RL702_all_lanes_merged_CG_bsseq_obj.Rds",
+                 "wgbs/CG_bsobj/RL703_all_merge_CG_bsseq_obj.Rds",
+                 "wgbs/CG_bsobj/RL1812_2019_09_19_38F_NSCs_primed_p8_S3_all_lanes_merge_CG_bsseq_obj.Rds",
+                 "wgbs/CG_bsobj/RL837_2017_09_28_P12_plus_10_38F_SmithR_to_E8_merge_CG_bsseq_obj.Rds",
+                 "wgbs/CG_bsobj/RL1811_2019_09_19_38F_NSCs_N2P_p8_S2_all_lanes_merge_CG_bsseq_obj.Rds")
+
+all_dmrs <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+
+# keep only corrected DMRs for this analysis
+corrected_dmrs <- all_dmrs[all_dmrs$any_corrected == TRUE]
+
+nsc_dmr_mCG <- make_mC_matrix(obj_fls = bs_obj_list,
+                              gr = corrected_dmrs, cores = 4)
+dim(nsc_dmr_mCG)
+
+colnames(mcols(corrected_dmrs))
+mC_esc <- mcols(corrected_dmrs)[ ,c("g1_mean")]
+
+all_mCG <- cbind(mC_esc, nsc_dmr_mCG)
+
+all_mCG <- all_mCG[complete.cases(all_mCG), ]
+
+primed_means <- rowMeans(as.matrix(all_mCG[ ,c("RL1812_2019_09_19_38F_NSCs_primed_p8_S3_all_lanes_merge_CG_bsseq_obj.Rds",
+                                             "RL703_all_merge_CG_bsseq_obj.Rds")]), na.rm = TRUE)
+
+all_mCG <- as.data.frame(all_mCG)
+all_mCG <- all_mCG[complete.cases(all_mCG), ]
+
+ind <- order(abs(all_mCG$mC_esc - primed_means))
+
+colnames(all_mCG) <- c("hESCs (mean)", "day 0 (38F)",
+                       "Primed-hiPSC (38F)", "Primed-NSC (38F)",
+                       "NtP-hiPSC (38F)", "NtP-NSC (38F)")
+
+ind <- order(abs(all_mCG$`hESCs (mean)` - primed_means))
+
+pdf(file = "wgbs/plots/memory_dmr_NSC_diff_38F_heatmap.pdf",
+    width = 2.5, height = 5)
+pheatmap(all_mCG[ind, ],
+         cluster_cols = FALSE, gaps_col = c(1,2,4),
+         border_color = NA, cluster_rows = FALSE, show_rownames = FALSE)
+dev.off()
+
+
+png(file = "wgbs/plots/memory_dmr_NSC_diff_38F_heatmap.png", width = 2,
+    height = 2, units = 'in', res = 600, pointsize = 7)
+pheatmap(all_mCG[ind, ],
+         cluster_cols = FALSE, gaps_col = c(1,2,4),
+         border_color = NA, cluster_rows = FALSE, show_rownames = FALSE)
+dev.off()
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3o")
+openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3o",
+                    x = all_mCG[ind, ])
+```
+
+NSC CG methylation in CH-DMRs
+```{r}
+
+```
+
 
 Session info
 ```{r}

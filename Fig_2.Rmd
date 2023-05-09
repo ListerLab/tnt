@@ -585,7 +585,7 @@ saveRDS(icr_gr, "resources/imprint_control_regions_granges_hg19.Rds")
 ```
 
 Calculate mCG/CG for all ICRs for all samples. 
-```{r, eval=FALSE}
+```{r, eval=FALSE, message=FALSE, error=FALSE, comment=FALSE}
 stopifnot(all(file.exists(mdat$BSseq_CG)))
 icr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG, gr = icr_gr, cores = 4)
 colnames(icr_mCG) <- mdat$Library_id
