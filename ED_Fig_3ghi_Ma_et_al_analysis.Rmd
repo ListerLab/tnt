@@ -1,0 +1,84 @@
+---
+title: "Untitled"
+author: "Sam Buckberry"
+date: "25/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("R/project_functions.R")
+```
+
+
+# Read the DMR file
+DMRs were called using the script `wgbs/dmrs/run_dmrseq_dug.R`
+```{r}
+dmrs <- readRDS("wgbs/dmrs/dmr_out/Mitalipov_iPSC_vs_ESC_ESC_vs_iPSC_dmrseq_dmrs.Rds")
+```
+
+How many significant DMRs
+```{r}
+table(dmrs$dmr_granges$qval < 0.1)
+table(dmrs$dmr_granges$qval < 0.05)
+```
+
+Calculate mCG levels for DMRs
+```{r}
+# List the BSseq object Rds files
+cg_rds_list <- list.files("wgbs/CG_bsobj/", full.names = TRUE)
+
+# List the files used in the DMR calling 
+dmr_rds_list <- dmrs$manifest_data$rds_path
+
+# Confirm location of all files locally
+basename(rds_list) %in% basename(cg_rds_list) %>% all() %>% stopifnot()
+
+cg_rds_list <- cg_rds_list[basename(cg_rds_list) %in% basename(rds_list)]
+
+# Make the mCG matrix
+dmr_mCG <- make_mC_matrix(obj_fls = cg_rds_list,
+                          gr = dmrs$dmr_granges, cores = 2)
+
+```
+
+Inspect DMR delta 
+```{r}
+sample_group <- dmrs$manifest_data$group
+
+ips_means <- rowMeans(dmr_mCG[ ,sample_group == "iPSC"])
+esc_means <- rowMeans(dmr_mCG[ ,sample_group == "ESC"])
+
+dmr_delta <- ips_means - esc_means
+
+hist(dmr_delta)
+```
+
+Filter DMRs based on delta and fdr
+```{r}
+
+dmr_mCG_filt <- dmr_mCG[abs(dmr_delta) > 0.2 & dmrs$dmr_granges$qval < 0.1, ]
+dim(dmr_mCG_filt)
+```
+```{r}
+pheatmap(dmr_mCG_filt, show_rownames = FALSE)
+```
+
+
+How many DMRs overlap 32F/38F DMRs?
+```{r}
+all_dmr <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+
+table(overlapsAny(all_dmr, dmrs$dmr_granges[dmrs$dmr_granges$qval < 0.1]))
+```
+
+How many overlap CH-DMRs
+```{r}
+ch_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+
+table(overlapsAny(all_dmr, ch_dmr))
+table(overlapsAny(dmrs$dmr_granges[dmrs$dmr_granges$qval < 0.1], ch_dmr))
+```
