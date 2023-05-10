@@ -1,0 +1,67 @@
+---
+title: "Extended Data Figures 4f,g,h: PNP-hiPSC WGBS analysis"
+author: "Sam Buckberry"
+date: '2022-07-13'
+output: html_document
+---
+
+```{r}
+source("R/project_functions.R")
+```
+
+```{r}
+## Read the lenti data from faulkner lab
+dat <- read_xlsx("lenti/Supp_table.xlsx", skip = 398)
+
+dat <- reshape2::melt(dat[6, ])
+dat <- dat[dat$variable != "hmi32Cas", ]
+dat$group <- ifelse(test = grepl(pattern = "TNT", x = dat$variable),
+                    yes = "TNT-hiPSC", no = "Primed-hiPSC")
+
+
+data_summary <- function(data, varname, groupnames){
+    require(plyr)
+    summary_func <- function(x, col){
+        c(mean = mean(x[[col]], na.rm=TRUE),
+          sd = sd(x[[col]], na.rm=TRUE))
+    }
+
+    data_sum <- ddply(data, groupnames, .fun=summary_func,
+                    varname)
+    data_sum <- rename(data_sum, c("mean" = varname))
+    return(data_sum)
+}
+
+gg <- ggplot(data = dat, aes(x = group, y = value, group=group,
+                             fill=group, colour=group)) +
+    geom_point(size=2) +
+    scale_colour_manual(values = c("#009E73", "#eebc4c")) +
+    stat_summary(fun.data=mean_sdl, fun.args = list(mult=1),
+                 geom="errorbar", color="black", width=0.1,
+                 position = position_nudge(x = 0.2)) +
+    stat_summary(fun=mean, geom="point", color="black",
+                 position = position_nudge(x = 0.2)) +
+    ylab("Poisson estimation of total diversity") + xlab("") +
+    sams_pub_theme()
+
+pdf("lenti/lenti_insertion_diversity_plot.pdf", width = 1.5, height = 2.1)
+gg
+dev.off()
+
+```
+
+```{r}
+wb_ed_fig4i <- openxlsx::createWorkbook()
+
+openxlsx::addWorksheet(wb_ed_fig4i, sheetName = "ED_Fig_4i")
+openxlsx::writeData(wb = wb_ed_fig4i, sheet = "ED_Fig_4i",
+                    x = gg$data)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig4i,
+                       file = "ED_Figure_4i_source_data.xlsx", overwrite = TRUE)
+```
+
+```{r}
+sessionInfo()
+```
+

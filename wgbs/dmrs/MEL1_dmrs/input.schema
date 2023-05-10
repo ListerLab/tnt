@@ -1,0 +1,3 @@
+1 depTasks=1 manifest=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_Primed_manifest.csv outpath=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_out/ prefix=esc_vs_primed
+2 depTasks=2 manifest=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_TNT_manifest.csv outpath=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_out/ prefix=esc_vs_tnt
+3 depTasks=3 manifest=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_NtP_manifest.csv outpath=/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/dmrs/MEL1_dmrs/dmr_out/ prefix=esc_vs_ntp

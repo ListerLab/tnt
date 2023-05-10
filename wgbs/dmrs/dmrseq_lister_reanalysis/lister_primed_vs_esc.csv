@@ -1,0 +1,7 @@
+﻿id,group,rds_path
+IMR90_iPSC,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRX026829_CG_bsseq_obj.Rds
+FF_iPSC_6_9,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRX026830_CG_bsseq_obj.Rds
+FF_iPSC_19_7,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRX026831_CG_bsseq_obj.Rds
+FF_iPSC_19_11,Primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/SRX026832_CG_bsseq_obj.Rds
+Ecker_H9,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/h9_WGBS_CG_bsseq_obj.Rds
+Ecker_H1,ESC,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/methylC-seq_h1_all_merged_CG_bsseq_obj.Rds

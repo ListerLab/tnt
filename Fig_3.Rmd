@@ -400,7 +400,7 @@ dmr_delta_df <- data.frame(Primed_delta = primed_delta, TNT_delta = TNT_delta, N
 
 dmr_delta_df$Class <- ifelse(test = primed_delta < 0, yes = "Hypo", no = "Hyper")
 
-primed_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = Primed_delta, y = fib_primed_delta, colour = Class, fill = Class)) +
+primed_scatter <- ggplot(data = dmr_delta_df, mapping = aes(x = Primed_delta, y = fib_primed_delta, colour = Class, fill = Class)) +
     geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
     geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
@@ -409,9 +409,9 @@ primed_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = Primed_delta,
     scale_colour_manual(values = vitC[c(6,1)]) +
     #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
-primed_scatter_gg <- ggExtra::ggMarginal(primed_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+primed_scatter_gg <- ggExtra::ggMarginal(primed_scatter, groupColour = TRUE, groupFill=TRUE)
 
-tnt_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = TNT_delta, y = fib_tnt_delta, colour = Class, fill = Class)) +
+tnt_scatter <- ggplot(data = dmr_delta_df, mapping = aes(x = TNT_delta, y = fib_tnt_delta, colour = Class, fill = Class)) +
     geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
     geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
@@ -420,9 +420,9 @@ tnt_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = TNT_delta, y = f
     scale_colour_manual(values = vitC[c(6,1)]) +
     #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
-tnt_scatter_gg <- ggExtra::ggMarginal(tnt_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+tnt_scatter_gg <- ggExtra::ggMarginal(tnt_scatter, groupColour = TRUE, groupFill=TRUE)
 
-ntp_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = NtoP_delta, y = fib_NtoP_delta, colour = Class, fill = Class)) +
+ntp_scatter <- ggplot(data = dmr_delta_df, mapping = aes(x = NtoP_delta, y = fib_NtoP_delta, colour = Class, fill = Class)) +
     geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
     geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
@@ -431,7 +431,7 @@ ntp_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = NtoP_delta, y = 
     scale_colour_manual(values = vitC[c(6,1)]) +
     #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
-ntp_scatter_gg <- ggExtra::ggMarginal(ntp_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+ntp_scatter_gg <- ggExtra::ggMarginal(ntp_scatter, groupColour = TRUE, groupFill=TRUE)
 
 pdf("wgbs/plots/donor_DMR_correction_scatterplots_with_histograms.pdf", height = 2, width = 6)
 plot_grid(primed_scatter_gg, tnt_scatter_gg, ntp_scatter_gg, ncol = 3)
@@ -444,26 +444,26 @@ primed_scatter_gg
 
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d1")
 openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d1",
-                    x = primed_scatter_gg$data)
+                    x = primed_scatter$data)
 ```
 
 TNT-hiPSC
-```{r}
+```{r, cache=TRUE}
 tnt_scatter_gg
 
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d2")
 openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d2",
-                    x = tnt_scatter_gg$data)
+                    x = tnt_scatter$data)
 
 ```
 
 NtP-hiPSC
-```{r}
+```{r, cache=TRUE}
 ntp_scatter_gg
 
 openxlsx::addWorksheet(wb_ed_fig3, sheetName = "Fig_3d3")
 openxlsx::writeData(wb = wb_ed_fig3, sheet = "Fig_3d3",
-                    x = ntp_scatter_gg$data)
+                    x = ntp_scatter$data)
 ```
 
 Enrichment tests for DMRs (First chunk run on remote server)

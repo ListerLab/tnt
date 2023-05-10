@@ -1,0 +1,5 @@
+﻿id,group,rds_path
+RL1981,esc,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL1981_2019_12_31_P13_plus_19_MEL1_in_E8_MethylC_S2_merged_lanes_CG_bsseq_obj.Rds
+RL2352,esc,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL2352_all_merged_CG_bsseq_obj.Rds
+RL1982,primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL1982_2019_12_31_P17_MEL1_HDF_to_E8_MethylC_S3_merged_lanes_CG_bsseq_obj.Rds
+RL2560,primed,/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/RL2560_2021_04_30_R9_p33_Mel1_iPSC_primed_methylC_S1_R1_001_CG_bsseq_obj.Rds

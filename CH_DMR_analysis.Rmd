@@ -1,0 +1,738 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Preliminaries
+```{r, eval=FALSE}
+source("R/project_functions.R")
+#source("R/server_libraries_and_functions.R")
+```
+
+Metadata
+```{r, eval=FALSE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+Select samples to calculate CH methylation
+```{r, eval=FALSE}
+mdat_sub <- mdat[mdat$State %in% c("Primed", "TNT", "NtP", "ESC", "SCNT", "PNP"), ]
+dim(mdat_sub)
+```
+
+Load DMRs
+```{r, eval=FALSE}
+CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+
+make_window_matrix_nc_corrected <- function(x, gr, bins=30, nc_correct=TRUE,
+                                            nc_contig="chrL"){
+
+    rds_path <- mCA_files[x]
+    message(basename(rds_path))
+    
+    #id <- mdat_wgbs$Library_id[x]
+    gr_expand <- gr + width(gr)
+    gr_expand$loci <- gr_to_loci(gr_expand)
+    gr_tiles <- tile(gr_expand, n = bins)
+
+    add_loci_to_grl <- function(x){
+        grt <- gr_tiles[[x]]
+        grt$loci <- gr_to_loci(gr_expand[x])
+        return(grt)
+    }
+
+    read_bs_obj <- function(rds_path){
+        stopifnot(file.exists(rds_path))
+        message(str_c("Reading ", rds_path))
+        message(Sys.time())
+        bs_obj <- readRDS(file = rds_path)
+
+        return(bs_obj)
+    }
+
+    # Calculate C coverage and methylation for ranges. Returns GRanges object
+    calc_mC_window <- function(bs_obj, gr){
+
+        message("Calculating coverage...")
+        gr$Cov <- getCoverage(BSseq = bs_obj, regions = gr, type = "Cov",
+                              what = "perRegionTotal")
+
+        message("Calculating M...")
+        gr$M <- getCoverage(BSseq = bs_obj, regions = gr, type = "M",
+                            what = "perRegionTotal")
+
+        message("Calculating methylation percentage...")
+        gr$pc <- gr$M / gr$Cov
+
+        return(gr)
+    }
+
+
+    gr_tiles <- lapply(1:length(gr_tiles), add_loci_to_grl) %>%
+        GRangesList() %>% unlist()
+
+    bs_obj <- read_bs_obj(rds_path)
+
+    mC_dat <- calc_mC_window(bs_obj = bs_obj, gr = gr_tiles)
+
+    dat <- matrix(data = mC_dat$pc, nrow = length(gr), byrow = TRUE)
+
+    # Correct for non-conversion
+    correct_nc <- function(bs_obj, nc_contig = "chrL"){
+
+        nc_obj <- chrSelectBSseq(BSseq = bs_obj, seqnames = nc_contig)
+        nc_cov <- getCoverage(BSseq = nc_obj, type = "Cov",
+                              what = "perBase")
+        nc_m <- getCoverage(BSseq = nc_obj, type = "M",
+                            what = "perBase")
+
+        nc_rate <- sum(nc_m) / sum(nc_cov)
+
+        return(nc_rate)
+    }
+
+    if (nc_correct == TRUE){
+        message("Correcting for non-conversion...")
+        nc_rate <- correct_nc(bs_obj = bs_obj, nc_contig = nc_contig)
+        dat <- dat - nc_rate
+        dat[dat < 0] <- 0
+    }
+
+    dat <- data.frame(dat)
+
+    rownames(dat) <- gr_to_loci(gr)
+    colnames(dat) <- 1:ncol(dat)
+    dat$id <- basename(rds_path)
+
+    return(dat)
+}
+
+mCA_files <- mdat_sub$BSseq_CA
+
+mdat_sub$Library_id[!file.exists(mCA_files)]
+
+mCA_files <- mCA_files[file.exists(mCA_files)]
+
+all(file.exists(mCA_files))
+
+dfl <- lapply(1:length(mCA_files), make_window_matrix_nc_corrected,
+              gr=CH_dmr)
+
+dfl <- do.call(rbind, dfl)
+
+saveRDS(dfl, "wgbs/processed_data/mCH_DMR_window_dat_all.Rds")
+
+```
+
+
+## Run locally
+
+```{r, cache=TRUE}
+source("R/project_functions.R")
+```
+
+
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+
+dfl <- readRDS("wgbs/processed_data/mCH_DMR_window_dat_all.Rds")
+
+id_ind <- match(dfl$id, basename(mdat$BSseq_CA))
+
+dfl$id <- mdat$Library_id[id_ind]
+
+CH_dat <- readxl::read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+CH_dmr$presence <- CH_dat$presence
+CH_dmr$loci <- gr_to_loci(CH_dmr)
+
+dfl$loci <- rownames(dfl)
+
+dfl$loci <- rep(gr_to_loci(CH_dmr), times=length(unique(dfl$id)))
+
+keep <- dfl$loci %in% CH_dmr$loci[CH_dmr$presence == "all iPSCs"]
+
+table(keep)
+
+dfl <- dfl[keep, ]
+
+### Normalise to max (flank normalisation)
+max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, 1:30], na.rm = TRUE)
+    return(vec)
+}
+
+#flank_max_norm <- function(x){
+#    vec <- dfl[x, 1:30] / max(dfl[x, c(1:10, 21:30)], na.rm = TRUE)
+#    return(vec)
+#}
+
+dfl_norm <- mclapply(X = 1:nrow(dfl), max_norm, mc.cores = 3) %>%
+    do.call(rbind, .)
+dfl_norm$id <- dfl$id
+dfl_norm$loci <- dfl$loci
+
+ind <- match(dfl_norm$id, mdat$Library_id)
+
+dfl_norm$group <- mdat$Group[ind]
+dfl_norm$progenitor <- mdat$Progenitor[ind]
+dfl_norm$batch <- mdat$Batch[ind]
+dfl_norm$lab <- mdat$Lab[ind]
+dfl_norm$background <- mdat$Background[ind]
+
+dfl_norm <- dfl_norm[dfl_norm$lab != "Smith", ]
+dfl_norm <- dfl_norm[!dfl_norm$group %in% c("Primed-intermediate", "Naive-intermediate"), ]
+```
+
+
+```{r, cache=TRUE}
+library(tidyr)
+library(dplyr)
+
+norm_dat <- reshape2::melt(dfl_norm)
+
+progenitor <- unique(norm_dat$progenitor)
+batch <- unique(norm_dat$batch)
+lab <- unique(norm_dat$lab)
+background <- unique(norm_dat$background)
+
+progenitor <- "Keratinocyte"
+title <- progenitor
+
+batch <- c("NHEK")
+background <- "NHEK"
+lab <- "Lister"
+
+ch_dmr_gr <- readRDS("wgbs/processed_data/CH-dmr-up-esc-granges.Rds")
+
+plot_ch <- function(progenitor, batch = batch, lab = lab,
+                    background = background, title){
+    
+    df <- norm_dat[norm_dat$progenitor %in% progenitor, ]
+    df <- df[df$batch %in% batch, ]
+    df <- df[df$lab %in% lab, ]
+    df <- df[df$background %in% background, ]
+    
+    df <- rbind(df, norm_dat[norm_dat$group == "hESC", ])
+    
+    colnames(df)[colnames(df) == "variable"] <- "bin"
+    
+    plot_dat <- reshape2::melt(df)
+    
+    hm_dat <- plot_dat[plot_dat$bin %in% 11:20, ]
+
+    hm_dat <- hm_dat %>% group_by(loci, id) %>%
+    summarise(mean=mean(value, na.rm=TRUE))
+
+    hm_dat <- hm_dat %>% tidyr::spread(id, mean) %>% data.frame()
+    rownames(hm_dat) <- hm_dat$loci
+    hm_dat$loci <- NULL
+
+    indx <- match(colnames(hm_dat), mdat$Library_id)
+    coldat <- mdat[indx, c("Library_id", "Group")]
+    rownames(coldat) <- coldat$Library_id
+    coldat$Library_id <- NULL
+    
+    hm <- pheatmap(hm_dat[complete.cases(hm_dat), ],
+             annotation_col = coldat, main = title,
+             border_color = NA, show_rownames = FALSE)
+
+    ## Calculate stats on flank norm mean for CH-DMRs for each group
+
+    stats_groups <- factor(coldat$Group)
+
+    design <- model.matrix(~ 0+stats_groups)
+    colnames(design) <- str_remove(string = colnames(design),
+                                      pattern = "stats_groups") %>% make.names()
+
+    cont <- makeContrasts(hESC - Primed.hiPSC,
+                            hESC - TNT.hiPSC,
+                            levels = design)
+
+    ch_fit <- lmFit(hm_dat, design)
+    ch_fit2 <- contrasts.fit(ch_fit, cont)
+
+    ch_fit2 <- eBayes(ch_fit2)
+
+    get_tt <- function(x){
+            tt <- topTable(ch_fit2, coef=x, adjust="BH",
+                      number = nrow(hm_dat), sort="none")
+            tt$loci <- rownames(tt)
+            tt$contrast <- dimnames(cont)$Contrasts[x]
+            tt$progenitor <- progenitor
+            tt$batch <- toString(batch)
+            tt$lab <- lab
+            tt$background <- toString(background)
+            return(tt)
+        }
+
+    tt <- lapply(1:ncol(cont), get_tt) %>% do.call(rbind, .)
+
+    tt$diff <- "NS"
+    tt$diff[(tt$logFC > 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hypo"
+    tt$diff[(tt$logFC < 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hyper"
+    
+    ## Get the loci that are differential for up and down
+    ips_hypo <- tt$loci[tt$diff == "hiPSC-hypo" & tt$contrast == "hESC - Primed.hiPSC"]
+    ips_hyper <- tt$loci[tt$diff == "hiPSC-hyper" & tt$contrast == "hESC - Primed.hiPSC"]
+    
+    ## Flag loci direction for plotting
+    df$direction <- "NS"
+    df$direction[df$loci %in% ips_hyper] <- "hiPSC-hyper"
+    df$direction[df$loci %in% ips_hypo] <- "hiPSC-hypo"
+
+    ## Aggregate the data for plotting
+    df$bin <- as.numeric(df$bin)
+    
+    df_grp <- df %>% group_by(id, group, bin, direction) %>%
+        summarise(mean=mean(value, na.rm = TRUE))
+    
+    
+    scale_max <- function(x){ x / max(x, na.rm = TRUE)}
+    
+    scale_group_max <- function(id){
+
+        df0 <- df_grp[df_grp$id == id, ]
+        df0$norm <- NA
+        df0$norm[df0$direction == "hiPSC-hyper"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hyper"])
+        df0$norm[df0$direction == "hiPSC-hypo"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hypo"])
+        df0$norm[df0$direction == "NS"] <- 
+            scale_max(df0$mean[df0$direction == "NS"])
+
+        return(df0)
+    }              
+    
+    df_norm <- lapply(unique(df_grp$id), scale_group_max) %>%
+        do.call(rbind, .)
+
+    # Set line width for plots
+    line_mm <- 0.25
+    
+    pp0 <- ggplot(df_norm, aes(x=bin, y = norm, group=group,
+                               fill=group, colour=group)) +
+        stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+        stat_summary(geom = 'ribbon', fun.data = mean_sdl, alpha=0.5,
+                 col=NA, na.rm=TRUE) +
+        facet_grid(direction~., scales = "free_y") +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() + ggtitle(title) +
+        theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+    
+    pp01 <- ggplot(df_norm, aes(x=bin, y = norm, group=id,
+                               fill=group, colour=group)) +
+        geom_line(size=0.5, alpha = 0.7) +
+        ylab("Normalised mCA/CA") +
+        facet_grid(direction~., scales = "free_y") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() + ggtitle(title) +
+    theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+    
+    pp02 <- ggplot(df_norm, aes(x=bin, y = norm, group=group,
+                               fill=group, colour=group)) +
+        stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+        facet_grid(direction~., scales = "free_y") +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() + ggtitle(title) +
+        theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+
+    out <- list(hm=hm, pp0=pp0, pp01=pp01, pp02=pp02, tt=tt)
+}
+
+```
+
+Study comparison
+```{r}
+progenitor <- unique(norm_dat$progenitor)
+batch <- unique(norm_dat$batch)
+lab <- unique(norm_dat$lab)
+background <- unique(norm_dat$background)
+
+progenitor <- "Keratinocyte"
+title <- progenitor
+
+batch <- c("NHEK")
+background <- "NHEK"
+lab <- "Lister"
+
+progenitor <- "Fibroblast"
+batch <- c("A", "Ecker", "Mitalipov")
+lab <- c("Lister", "Mitalipov", "Ecker")
+background <- c("32F", "38F", "iPSC_S1", "iPSC_S2",
+                "iPSC_R2", "iPSC_R1", "IMR90", "FF")
+
+    df <- norm_dat[norm_dat$progenitor %in% progenitor, ]
+    df <- df[df$batch %in% batch, ]
+    df <- df[df$lab %in% lab, ]
+    df <- df[df$background %in% background, ]
+    df <- df[df$group %in% c("Primed-hiPSC", "hESC"), ]
+    
+    df <- rbind(df, norm_dat[norm_dat$group == "hESC", ])
+    
+    colnames(df)[colnames(df) == "variable"] <- "bin"
+    
+    plot_dat <- reshape2::melt(df)
+    
+    hm_dat <- plot_dat[plot_dat$bin %in% 11:20, ]
+
+    hm_dat <- hm_dat %>% group_by(loci, id) %>%
+    summarise(mean=mean(value, na.rm=TRUE))
+
+    hm_dat <- hm_dat %>% tidyr::spread(id, mean) %>% data.frame()
+    rownames(hm_dat) <- hm_dat$loci
+    hm_dat$loci <- NULL
+
+    indx <- match(colnames(hm_dat), mdat$Library_id)
+    coldat <- mdat[indx, c("Library_id", "Group")]
+    rownames(coldat) <- coldat$Library_id
+    coldat$Library_id <- NULL
+    
+    col_ind <- match(colnames(hm_dat), mdat$Library_id)
+    coldat$Study <- mdat$Lab[indx]
+
+    pdf(file = "wgbs/plots/ch-dmr-study-comparison-plots.pdf",
+    height = 4, width = 4)
+    hm <- pheatmap(hm_dat[complete.cases(hm_dat), ],
+                   fontsize_col = 6,
+                   annotation_col = coldat, main = "Study comparison",
+                   labels_col = mdat$Manuscript.Name[indx],
+                   border_color = NA, show_rownames = FALSE)
+    dev.off()
+```
+
+
+```{r}
+fib_c_pl <- plot_ch(progenitor = c("Fibroblast"), batch = "C",
+                    background = "32F", lab = "Lister",
+                    title = "Fibroblast 32F")
+
+pdf(file = "wgbs/plots/ch-dmr-32F-repeat-profile-plots.pdf",
+    height = 3.5, width = 2.75)
+fib_c_pl$pp0
+fib_c_pl$pp01
+fib_c_pl$pp02
+dev.off()
+```
+
+
+```{r}
+fib_ab_pl <- plot_ch(progenitor = c("Fibroblast"), batch = c("A"),
+                    background = c("32F", "38F"), lab = "Lister",
+                    title = "Fibroblast")
+
+pdf(file = "wgbs/plots/ch-dmr-32F-batchA-profile-plots.pdf",
+    height = 3.5, width = 2.75)
+fib_ab_pl$pp0
+fib_ab_pl$pp01
+fib_ab_pl$pp02
+dev.off()
+```
+
+
+```{r}
+
+msc_c_pl <- plot_ch(progenitor = c("MSC"), batch = "MSC",
+                    background = "MSC", lab = "Lister",
+                    title = "MSC")
+
+pdf(file = "wgbs/plots/ch-dmr-msc-profile-plots.pdf",
+    height = 3.5, width = 2.75)
+msc_c_pl$pp0
+msc_c_pl$pp01
+msc_c_pl$pp02
+dev.off()
+
+
+nhek_c_pl <- plot_ch(progenitor = c("Keratinocyte"), batch = "NHEK",
+                    background = "NHEK", lab = "Lister",
+                    title = "NHEK")
+
+pdf(file = "wgbs/plots/ch-dmr-nhek-profile-plots.pdf",
+    height = 3.5, width = 2.75)
+nhek_c_pl$pp0
+nhek_c_pl$pp01
+nhek_c_pl$pp02
+dev.off()
+
+#mel1_c_pl <- plot_hm(progenitor = c("Fibroblast"), batch = "-",
+#                    background = "MEL1", lab = "Lister",
+#                    title = "MEL1")
+
+
+
+```
+
+Primed-Naive-Primed analysis
+```{r}
+
+## Primed lines
+pr <- c("RL417", "RL418")
+
+## Primed-Naive lines
+pn <- c("RL699", "RL700")
+
+## Primed-Naive-Primed lines
+pnp <- c("RL3073", "RL3074", "RL3075")
+
+
+#RL3076
+#RL3077
+#RL3078
+
+    df <- norm_dat[norm_dat$id %in% c(pr, pn, pnp), ]
+    df <- rbind(df, norm_dat[norm_dat$group == "hESC", ])
+    
+    colnames(df)[colnames(df) == "variable"] <- "bin"
+    
+    plot_dat <- reshape2::melt(df)
+    
+    hm_dat <- plot_dat[plot_dat$bin %in% 11:20, ]
+
+    hm_dat <- hm_dat %>% group_by(loci, id) %>%
+    summarise(mean=mean(value, na.rm=TRUE))
+
+    hm_dat <- hm_dat %>% tidyr::spread(id, mean) %>% data.frame()
+    rownames(hm_dat) <- hm_dat$loci
+    hm_dat$loci <- NULL
+
+    indx <- match(colnames(hm_dat), mdat$Library_id)
+    coldat <- mdat[indx, c("Library_id", "Group")]
+    rownames(coldat) <- coldat$Library_id
+    coldat$Library_id <- NULL
+    
+    hm <- pheatmap(hm_dat[complete.cases(hm_dat), ],
+             annotation_col = coldat, main = title,
+             border_color = NA, show_rownames = FALSE)
+
+    ## Calculate stats on flank norm mean for CH-DMRs for each group
+
+    stats_groups <- factor(coldat$Group)
+
+    design <- model.matrix(~ 0+stats_groups)
+    colnames(design) <- str_remove(string = colnames(design),
+                                      pattern = "stats_groups") %>% make.names()
+
+    cont <- makeContrasts(hESC - Primed.hiPSC,
+                            levels = design)
+
+    ch_fit <- lmFit(hm_dat, design)
+    ch_fit2 <- contrasts.fit(ch_fit, cont)
+
+    ch_fit2 <- eBayes(ch_fit2)
+
+            tt <- topTable(ch_fit2, adjust="BH",
+                      number = nrow(hm_dat), sort="none")
+            tt$loci <- rownames(tt)
+            tt$contrast <- dimnames(cont)$Contrasts
+            tt$progenitor <- progenitor
+            tt$batch <- toString(batch)
+            tt$lab <- "Lister"
+            tt$background <- toString(background)
+            return(tt)
+
+
+    #tt <- lapply(1:ncol(cont), get_tt) %>% do.call(rbind, .)
+
+    tt$diff <- "NS"
+    tt$diff[(tt$logFC > 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hypo"
+    tt$diff[(tt$logFC < 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hyper"
+    
+    ## Get the loci that are differential for up and down
+    ips_hypo <- tt$loci[tt$diff == "hiPSC-hypo" & tt$contrast == "hESC - Primed.hiPSC"]
+    ips_hyper <- tt$loci[tt$diff == "hiPSC-hyper" & tt$contrast == "hESC - Primed.hiPSC"]
+    
+    ## Flag loci direction for plotting
+    df$direction <- "NS"
+    df$direction[df$loci %in% ips_hyper] <- "hiPSC-hyper"
+    df$direction[df$loci %in% ips_hypo] <- "hiPSC-hypo"
+
+    ## Aggregate the data for plotting
+    df$bin <- as.numeric(df$bin)
+    
+    df_grp <- df %>% group_by(id, group, bin, direction) %>%
+        summarise(mean=mean(value, na.rm = TRUE))
+    
+    scale_group_max <- function(id){
+
+        df0 <- df_grp[df_grp$id == id, ]
+        df0$norm <- NA
+        df0$norm[df0$direction == "hiPSC-hyper"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hyper"])
+        df0$norm[df0$direction == "hiPSC-hypo"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hypo"])
+        df0$norm[df0$direction == "NS"] <- 
+            scale_max(df0$mean[df0$direction == "NS"])
+
+        return(df0)
+    }              
+    
+    df_norm <- lapply(unique(df_grp$id), scale_group_max) %>%
+        do.call(rbind, .)
+
+    # Set line width for plots
+    line_mm <- 0.25
+    
+    pp0 <- ggplot(df_norm, aes(x=bin, y = norm, group=group,
+                               fill=group, colour=group)) +
+        stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+        stat_summary(geom = 'ribbon', fun.data = mean_sdl, alpha=0.5,
+                 col=NA, na.rm=TRUE) +
+        facet_grid(direction~., scales = "free_y") +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() + ggtitle(title) +
+        theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+    
+    pp01 <- ggplot(df_norm, aes(x=bin, y = norm, group=id,
+                               fill=group, colour=group)) +
+        geom_line(size=0.5, alpha = 0.7) +
+        ylab("Normalised mCA/CA") +
+        facet_grid(direction~., scales = "free_y") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() + ggtitle(title) +
+    theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+    
+    pp02 <- ggplot(df_norm, aes(x=bin, y = norm, group=group,
+                               fill=group, colour=group)) +
+        stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+        facet_grid(direction~., scales = "free_y") +
+        ylab("Normalised mCA/CA") +
+        xlab("") +
+        geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+        theme_bw() + ggtitle(title) +
+        theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+
+    
+    pp01_keep <- ggplot(df_norm[df_norm$direction == "hiPSC-hypo", ],
+                        aes(x=bin, y = norm, group=id,
+                               fill=group, colour=group)) +
+        geom_line(size=0.5, alpha = 0.7) +
+        ylab("Normalised mCA/CA") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() + ggtitle(title) +
+    theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())    
+    
+pdf("wgbs/plots/pnp-ch-dmr-profile-plots.pdf", width = 3, height = 3)
+pp01
+dev.off()
+
+pp01_keep
+```
+
+

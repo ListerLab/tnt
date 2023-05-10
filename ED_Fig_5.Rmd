@@ -1,0 +1,367 @@
+---
+title: "Extended Data Figure 5: Comparative DMR analysis"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+source("R/project_functions.R")
+```
+
+Load the metadata
+```{r}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+List the DMR files
+```{r, cache=TRUE}
+#dmr_list <- list.files("wgbs/dmrs", pattern = ".Rds", recursive = TRUE,
+#                       full.names = TRUE)
+
+#keep_files <- grepl(pattern = "wgbs/dmrs/dmrseq_", x = dmr_list)
+#dmr_list <- dmr_list[keep_files]
+
+dmr_list <- c("wgbs/dmrs/dmrseq_lister_reanalysis/lister_primed_vs_esc_Primed_vs_ESC_dmrseq_dmrs.Rds",
+  "wgbs/dmrs/dmrseq_mitalipov_reanalysis/mitalipov_primed_sendai_vs_esc_Primed_vs_ESC_dmrseq_dmrs.Rds",
+  "wgbs/dmrs/dmrseq_primed_vs_esc_original/dmrseq_primed_vs_esc_original_ESC_vs_Primed_dmrseq_dmrs.Rds",
+  "wgbs/dmrs/dmrseq_primed_vs_tnt_matched/primed_vs_tnt_matched_TNT_vs_Primed_dmrseq_dmrs.Rds",
+  "wgbs/dmrs/MEL1_dmrs/dmr_out/esc_vs_primed_dmrseq_dmrs.Rds")
+
+#wgbs/dmrs/dmrseq_lister_reanalysis/lister_primed_vs_esc_Primed_vs_ESC_dmrseq_dmrs.Rds
+
+#dmr_list
+```
+
+Load the DMR files 
+```{r, cache=TRUE}
+dmr_obj_list <- lapply(dmr_list, readRDS)
+names(dmr_obj_list) <- basename(dmr_list)
+```
+
+```{r, cache=TRUE}
+process_dmr <- function(dmr_obj){
+    
+    # make mCG matrix
+    bsseq_fls <- basename(dmr_obj$manifest_data$rds_path)
+    bsseq_fls <- str_c("wgbs/CG_bsobj/", bsseq_fls)    
+    
+    mC_dat <- make_mC_matrix(obj_fls = bsseq_fls,
+                             gr = dmr_obj$dmr_granges,
+                             cores = 3)
+    
+    ind <- match(colnames(mC_dat), basename(dmr_obj$manifest_data$rds_path))
+    colnames(mC_dat) <- dmr_obj$manifest_data$id[ind]
+    
+    ## Calculate delta for groups
+    groups <- unique(dmr_obj$manifest_data$group)
+    g1_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[1]])
+    g2_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[2]])
+    group_delta <- g1_mean - g2_mean
+    
+    ## Setup mcols for output
+    df <- data.frame(g1_mean = g1_mean, g2_mean = g2_mean, delta = group_delta)
+    
+    mcols(dmr_obj$dmr_granges) <- cbind(mcols(dmr_obj$dmr_granges), df, mC_dat)
+    
+    return(dmr_obj)
+}
+
+dmr_annot_list <- lapply(X = dmr_obj_list, FUN = process_dmr)
+```
+
+
+Filter DMRs based on significance threshold and get counts
+```{r, cache=TRUE}
+
+filter_dmrs <- function(x, pval=0.05, delta=0.1){
+    
+    dmr_obj <- dmr_annot_list[[x]]
+    dmr_gr <- dmr_obj$dmr_granges
+    #dmr_gr <- dmr_gr[dmr_gr$qval < fdr]
+    #dmr_gr <- dmr_gr[(dmr_gr$pval < pval) & (abs(dmr_gr$delta) > delta)]
+    dmr_gr <- dmr_gr[(dmr_gr$pval < pval)]
+    mcols(dmr_gr) <- mcols(dmr_gr)[ ,c("pval", "qval", "delta")]
+    
+    ## Sort by delta
+    dmr_gr <- dmr_gr[order(dmr_gr$delta, decreasing = TRUE)]
+    
+    dmr_gr$id <- names(dmr_annot_list[x])
+    return(dmr_gr)
+    
+}
+
+dmr_filt_list <- lapply(X = 1:length(dmr_annot_list), FUN = filter_dmrs)
+names(dmr_filt_list) <- basename(dmr_list) %>% str_remove(pattern = "_dmrseq_dmrs.Rds")
+
+# Get DMR count for each comparison
+lengths(dmr_filt_list)
+saveRDS(dmr_filt_list, "wgbs/processed_data/all_cg_dmr_filt_list.Rds")
+```
+
+Inspect DMR overlaps
+```{r, cache=TRUE}
+union_cg_dmr <- GRangesList(dmr_filt_list) %>% unlist %>% reduce()
+
+dmr_olaps <- lapply(dmr_filt_list,
+                    FUN = function(x){overlapsAny(union_cg_dmr, x)}) %>% 
+    do.call(cbind, .)
+dmr_olaps <- data.frame(dmr_olaps) + 0
+
+upset(dmr_olaps, order.by = "freq")
+
+```
+
+Combine DMRs (not union) sorted by delta
+```{r, cache=TRUE}
+all_dmr_gr <- GRangesList(dmr_filt_list) %>% unlist()
+```
+
+
+Get mCG levels for all DMRs
+```{r, cache=TRUE}
+
+all_ids <- mdat$Library_id[(mdat$Progenitor %in% c("Fibroblast", "ESC")) &
+                    (mdat$Group %in% c("TNT-hiPSC", "Primed-hiPSC", "hESC",
+                                      "SCNT-hiPSC"))]
+
+## Remove IDs where samples have been merged or are naive hESCs
+rm_ids <- c("RL1752_1772", "RL2351", "RL1981", "RL2352", "SRR1561748",
+  "SRR1561749", "SRR1561750", "SRR1561745", "SRR1561746", "SRR1561747")
+
+all_ids <- all_ids[!all_ids %in% rm_ids]
+
+ind <- match(all_ids, mdat$Library_id)
+
+all_dmr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[ind],
+                              gr = all_dmr_gr, cores = 4)
+
+#ids <- str_c(mdat$Group, mdat$Background, mdat$Timepoint,
+#             mdat$Media, mdat$Batch, sep = "-")
+
+colnames(all_dmr_mCG) <- mdat$Library_id[ind]
+```
+
+Plot heatmap of all DMRs
+```{r, cache=TRUE}
+#all_dmr_mCG_norm <- normalizeBetweenArrays(all_dmr_mCG[complete.cases(all_dmr_mCG), ],
+#                                           method = "quantile")
+
+## Set column order by study
+mdat_sub <- mdat[ind, c("Library_id", "Group", "Lab", "Batch")]
+
+mdat_sub$Group <- factor(mdat_sub$Group,
+                         levels=c("Primed-hiPSC", "SCNT-hiPSC",
+                                  "TNT-hiPSC", "hESC"))
+
+mdat_sub$Lab <- factor(mdat_sub$Lab, 
+                       levels=c("Lister", "Ecker", "Mitalipov", "Smith"))
+
+mdat_sub$Batch <- factor(mdat_sub$Batch,
+                         levels=c("A", "C", "MEL1",
+                                  "Ecker", "Mitalipov", "Smith"))
+
+mdat_sub <- mdat_sub[order(mdat_sub$Group, mdat_sub$Lab, mdat_sub$Batch), ]
+rownames(mdat_sub) <- mdat_sub$Library_id
+
+all_dmr_mCG <- all_dmr_mCG[ ,match(mdat_sub$Library_id, colnames(all_dmr_mCG))]
+all(colnames(all_dmr_mCG) == mdat_sub$Library_id)
+
+## Set row gaps for each DMR set
+row_gaps <- cumsum(lengths(dmr_filt_list))
+
+coldat <- data.frame(row.names = colnames(all_dmr_mCG),
+                     Group=mdat_sub$Group, Lab=mdat_sub$Lab,
+                     Batch=mdat_sub$Batch)
+
+plot_ind <- match(colnames(all_dmr_mCG), mdat$Library_id)
+
+
+pdf("wgbs/plots/all_dmr_heatmap.pdf")
+pheatmap(all_dmr_mCG,
+         cluster_cols = FALSE,
+         annotation_col = coldat,
+         border_color = NA,
+         cluster_rows = FALSE,
+         gaps_row = row_gaps[1:(length(row_gaps)-1)],
+         show_rownames = FALSE)
+dev.off()
+
+png("wgbs/plots/all_dmr_heatmap.png", width = 7, height = 7, units = "in", res = 300)
+pheatmap(all_dmr_mCG,
+         gaps_col = c(4,10,12,16,20,24,26,32,34),
+         labels_col = mdat$Manuscript.Name[plot_ind],
+         cluster_cols = FALSE,
+         annotation_col = coldat,
+         border_color = NA,
+         cluster_rows = FALSE,
+         gaps_row = row_gaps[1:(length(row_gaps)-1)],
+         show_rownames = FALSE)
+dev.off()
+
+
+
+
+```
+
+Dendrogram of union DMRs
+```{r, cache=TRUE}
+plot_dendrogram(all_dmr_mCG[complete.cases(all_dmr_mCG), ])
+```
+
+PCA of union DMRs
+```{r, cache=TRUE}
+plot_pca(all_dmr_mCG, scale = FALSE, dim1 = 1, dim2 = 2)
+plot_pca(all_dmr_mCG, scale = FALSE, dim1 = 2, dim2 = 3)
+plot_pca(all_dmr_mCG, scale = FALSE, dim1 = 3, dim2 = 4)
+```
+
+
+Clustered heatmap with k-means reduction for clustering DMRs
+```{r, cache=TRUE}
+pheatmap(union_mCG[complete.cases(union_mCG), ], kmeans_k = 1000)
+```
+
+
+## Analysis of original DMRs 
+```{r, cache=TRUE}
+orig_dmr_gr <- readRDS(file = "wgbs/processed_data/all_dmrs_annotated_granges.Rds")
+
+orig_dmr_gr_mCG <- make_mC_matrix(obj_fls = all_fls, gr = orig_dmr_gr, cores = 3)
+ind3 <- match(colnames(orig_dmr_gr_mCG), basename(mdat$BSseq_CG))
+
+
+
+colnames(orig_dmr_gr_mCG) <- mdat$Library_id[ind3]
+
+primed_a <- c("RL417",
+              "RL418",
+              "RL1751_1771",
+              "RL703")
+
+esc_a <- c("SRS114877",
+              "SRS004213",
+              "SRS606777",
+              "SRS606778",
+           "SRR1561745",
+           "RL2351",
+           "RL2352")
+
+mean_primed_a <- rowMeans(orig_dmr_gr_mCG[ ,primed_a],
+                          na.rm = TRUE)
+
+mean_esc_a <- rowMeans(orig_dmr_gr_mCG[ ,esc_a],
+                          na.rm = TRUE)
+
+mean_delta <- mean_esc_a - mean_primed_a
+
+orig_dmr_gr_mCG_ordered <- orig_dmr_gr_mCG[order(mean_delta,
+                                                 decreasing = TRUE), ]
+
+orig_dmr_gr_mCG_ordered <-
+    orig_dmr_gr_mCG_ordered[complete.cases(orig_dmr_gr_mCG_ordered), ]
+
+pheatmap(orig_dmr_gr_mCG_ordered[ ,c(5, 6, 9:13, #ESCs
+                                     15, 16, 17, 14, # Primed A
+                                     30, 31, # TNT A
+                                     18:23, # Primed B
+                                     24:29)], # TNT B
+         show_rownames = FALSE, cluster_rows = FALSE,
+         cluster_cols = FALSE, gaps_col = c(7, 11, 13, 19))
+
+```
+
+
+
+ESC difference boxplots
+```{r, cache=TRUE}
+esc_delta_dat <- mean_esc_a - orig_dmr_gr_mCG
+
+esc_delta_dat <- reshape2::melt(esc_delta_dat)
+
+ind2 <- match(esc_delta_dat$Var2, mdat$Library_id)
+
+esc_delta_dat$group <- mdat$Group[ind2]
+
+esc_delta_dat$batch <- mdat$Batch[ind2]
+
+esc_delta_dat$batch <- factor(esc_delta_dat$batch, levels = c("A", "B", "C",
+                                                              "Ecker",
+                                                              "Mitalipov",
+                                                              "Smith"))
+
+gg_delta_mCG <- ggplot(esc_delta_dat,
+                       aes(x = Var2,
+                           y = value, fill=batch)) +
+    geom_boxplot(outlier.color = NA) +
+    facet_grid(group+batch~., drop = TRUE, scales = "free", space = "free") +
+    theme(strip.text.y = element_text(angle = 0)) +
+    coord_flip()
+
+gg_delta_mCG
+
+gg_ridge_mCG <- ggplot(esc_delta_dat,
+                       aes(y = Var2,
+                           x = value, fill=batch)) +
+    geom_density_ridges() +
+    facet_grid(group+batch~., drop = TRUE, scales = "free", space = "free") +
+    geom_vline(xintercept = 0) +
+    ylab("") +
+    theme(strip.text.y = element_text(angle = 0))
+
+gg_ridge_mCG
+```
+
+
+
+
+```{r, cache=TRUE}
+dmr_union_gr_expand <- GRangesList(dmr_filt_list) %>% unlist()
+dmr_union_gr_expand <- (dmr_union_gr_expand+1000) %>% reduce()
+hits_expand <- lapply(dmr_filt_list, function(x){overlapsAny(dmr_union_gr_expand, x)}) %>%
+    do.call(cbind, .) %>% data.frame()
+colnames(hits_expand) <- names(dmr_filt_list)
+hits_expand <- hits_expand + 0
+
+UpSetR::upset(hits_expand, order.by = "freq")
+
+```
+
+
+Add in CH-DMRs
+```{r, cache=TRUE}
+ch_dat <- readxl::read_excel(path = "resources/nature13551-s3.xlsx")
+
+ch_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+#ch_dmr$presence <- ch_dat$presence
+#ch_dmr$loci <- gr_to_loci(ch_dmr)
+
+#ch_dmr <- readRDS("wgbs/processed_data/CH-dmr-up-esc-granges.Rds")
+mcols(ch_dmr) <- NULL
+
+#dmr_filt_list[[6]] <- ch_dmr
+#names(dmr_filt_list[6]) <- "CH-DMR"
+
+#dmr_union_gr_ch <- GRangesList(dmr_union_gr) %>% unlist()
+#mcols(dmr_union_gr_ch) <- NULL
+
+dmr_union_gr_ch <- GRangesList(dmr_union_gr, ch_dmr) %>% unlist() %>% reduce()
+
+dmr_filt_list[[6]] <- ch_dmr
+names(dmr_filt_list) <- c(names(dmr_filt_list)[1:5], "CH-DMR")
+
+hits_ch <- lapply(dmr_filt_list, function(x){overlapsAny(dmr_union_gr_ch, x)}) %>%
+    do.call(cbind, .) %>% data.frame()
+
+colnames(hits_ch) <- names(dmr_filt_list)
+hits_ch <- hits_ch + 0
+
+UpSetR::upset(hits_ch, order.by = "freq", nsets = 8)
+```
+
+
+
+
+

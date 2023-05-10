@@ -1,0 +1,318 @@
+---
+title: "Extended Data Figures 4f,g,h: PNP-hiPSC WGBS analysis"
+author: "Sam Buckberry"
+date: '2022-07-13'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("R/project_functions.R")
+```
+
+Load the metadata
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+List relevant library ids
+```{r, cache=TRUE}
+## Primed lines
+pr <- c("RL417", "RL418")
+
+## Primed-Naive lines
+pn <- c("RL699", "RL700")
+
+## Primed-Naive-Primed lines
+pnp <- c("RL3073", "RL3074", "RL3075")
+
+## ESC lines
+esc <- c("RL2351_merge", "RL2352_merge",
+         "SRR1561745_merge", "SRS004213", "SRS114877",
+         "SRS606777", "SRS606778")
+
+libs <- c(pr, pn, pnp, esc)
+```
+
+## Plot CG DMRs 
+Load DMRs
+```{r, cache=TRUE}
+ips_esc_dmrs <- readRDS("wgbs/processed_data/classified_dmrs_granges.Rds")
+```
+
+Calculate mCG/CG for relevant samples
+```{r, cache=TRUE}
+dmr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[mdat$Library_id %in% libs],
+                          gr = ips_esc_dmrs, cores = 3)
+colnames(dmr_mCG) <- mdat$Library_id[mdat$Library_id %in% libs]
+ind <- match(colnames(dmr_mCG), mdat$Library_id)
+
+coldat <- data.frame(row.names = colnames(dmr_mCG), Group=mdat$Group[ind])
+
+pdf("wgbs/plots/pnp-cg-dmr-heatmap.pdf",
+    width = 4, height = 4)
+
+pheatmap(dmr_mCG[complete.cases(dmr_mCG), ], show_rownames = FALSE,
+         clustering_distance_cols = "correlation",
+         annotation_col = coldat, fontsize = 6,
+         labels_col = mdat$Manuscript.Name[ind])
+
+dev.off()
+```
+
+```{r}
+pheatmap(dmr_mCG[complete.cases(dmr_mCG), ], show_rownames = FALSE,
+         clustering_distance_cols = "correlation",
+         annotation_col = coldat, fontsize = 6,
+         labels_col = mdat$Manuscript.Name[ind])
+```
+
+
+## Plot ICRs
+```{r, cache=TRUE}
+icr_gr <- readRDS("resources/imprint_control_regions_granges_hg19.Rds")
+
+icr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[mdat$Library_id %in% c(pr, pn, pnp)],
+                          gr = icr_gr, cores = 3)
+
+colnames(icr_mCG) <- mdat$Library_id[mdat$Library_id %in% c(pr, pn, pnp)]
+
+
+icr_mCG <- reshape2::melt(icr_mCG)
+
+ind2 <- match(icr_mCG$Var2, mdat$Library_id)
+
+icr_mCG$group <- mdat$Group[ind2]
+icr_mCG$id <- mdat$Manuscript.Name[ind2]
+icr_mCG$group <- factor(icr_mCG$group, levels = c("Primed-hiPSC",
+                                                  "PtN-hiPSC",
+                                                  "PNP-hiPSC"))
+
+gg_icr <- ggplot(icr_mCG, aes(x = id, y = value, fill=group)) +
+    geom_boxplot(lwd=line_mm) + ylab("ICR mCG/CG") + xlab("") +
+    facet_grid(.~group, space = "free", scales = "free", drop = TRUE) + 
+    sams_pub_theme()
+
+pdf("wgbs/plots/pnp-icr-boxplots.pdf", width = 2, height = 2)
+gg_icr
+dev.off()
+
+gg_icr
+```
+
+
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+dfl <- readRDS("wgbs/processed_data/mCH_DMR_window_dat_all.Rds")
+
+id_ind <- match(dfl$id, basename(mdat$BSseq_CA))
+
+dfl$id <- mdat$Library_id[id_ind]
+
+CH_dat <- readxl::read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+CH_dmr$presence <- CH_dat$presence
+CH_dmr$loci <- gr_to_loci(CH_dmr)
+
+dfl$loci <- rownames(dfl)
+
+dfl$loci <- rep(gr_to_loci(CH_dmr), times=length(unique(dfl$id)))
+
+keep <- dfl$loci %in% CH_dmr$loci[CH_dmr$presence == "all iPSCs"]
+
+table(keep)
+
+dfl <- dfl[keep, ]
+
+### Normalise to max (flank normalisation)
+max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, 1:30], na.rm = TRUE)
+    return(vec)
+}
+
+#flank_max_norm <- function(x){
+#    vec <- dfl[x, 1:30] / max(dfl[x, c(1:10, 21:30)], na.rm = TRUE)
+#    return(vec)
+#}
+
+dfl_norm <- lapply(X = 1:nrow(dfl), max_norm) %>%
+    do.call(rbind, .)
+
+dfl_norm$id <- dfl$id
+dfl_norm$loci <- dfl$loci
+
+ind <- match(dfl_norm$id, mdat$Library_id)
+
+dfl_norm$group <- mdat$Group[ind]
+dfl_norm$progenitor <- mdat$Progenitor[ind]
+dfl_norm$batch <- mdat$Batch[ind]
+dfl_norm$lab <- mdat$Lab[ind]
+dfl_norm$background <- mdat$Background[ind]
+
+
+norm_dat <- reshape2::melt(dfl_norm)
+
+## Primed lines
+pr <- c("RL417", "RL418")
+
+## Primed-Naive lines
+pn <- c("RL699", "RL700")
+
+## Primed-Naive-Primed lines
+pnp <- c("RL3073", "RL3074", "RL3075")
+
+    df <- norm_dat[norm_dat$id %in% c(pr, pn, pnp), ]
+    df <- rbind(df, norm_dat[norm_dat$group == "hESC", ])
+    
+    colnames(df)[colnames(df) == "variable"] <- "bin"
+    
+    plot_dat <- reshape2::melt(df)
+    
+    hm_dat <- plot_dat[plot_dat$bin %in% 11:20, ]
+
+    hm_dat <- hm_dat %>% dplyr::group_by(loci, id) %>%
+    dplyr::summarise(mean=mean(value, na.rm=TRUE))
+
+    hm_dat <- hm_dat %>% tidyr::spread(id, mean) %>% data.frame()
+    rownames(hm_dat) <- hm_dat$loci
+    hm_dat$loci <- NULL
+
+    indx <- match(colnames(hm_dat), mdat$Library_id)
+    coldat <- mdat[indx, c("Library_id", "Group")]
+    rownames(coldat) <- coldat$Library_id
+    coldat$Library_id <- NULL
+    
+    # hm <- pheatmap(hm_dat[complete.cases(hm_dat), ],
+    #          annotation_col = coldat, main = title,
+    #          border_color = NA, show_rownames = FALSE)
+
+    ## Calculate stats on flank norm mean for CH-DMRs for each group
+
+    stats_groups <- factor(coldat$Group)
+
+    design <- model.matrix(~ 0+stats_groups)
+    colnames(design) <- str_remove(string = colnames(design),
+                                      pattern = "stats_groups") %>% make.names()
+
+    cont <- makeContrasts(hESC - Primed.hiPSC,
+                            levels = design)
+
+    ch_fit <- lmFit(hm_dat, design)
+    ch_fit2 <- contrasts.fit(ch_fit, cont)
+
+    ch_fit2 <- eBayes(ch_fit2)
+
+            tt <- topTable(ch_fit2, adjust="BH",
+                      number = nrow(hm_dat), sort="none")
+            tt$loci <- rownames(tt)
+            tt$contrast <- dimnames(cont)$Contrasts
+            tt$progenitor <- "Fibroblast"
+            tt$batch <- "PNP"
+            tt$lab <- "Lister"
+            tt$background <- "32F"
+
+
+    #tt <- lapply(1:ncol(cont), get_tt) %>% do.call(rbind, .)
+
+    tt$diff <- "NS"
+    tt$diff[(tt$logFC > 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hypo"
+    tt$diff[(tt$logFC < 0) & (tt$adj.P.Val < 0.05)] <- "hiPSC-hyper"
+    
+    ## Get the loci that are differential for up and down
+    ips_hypo <- tt$loci[tt$diff == "hiPSC-hypo" & tt$contrast == "hESC - Primed.hiPSC"]
+    ips_hyper <- tt$loci[tt$diff == "hiPSC-hyper" & tt$contrast == "hESC - Primed.hiPSC"]
+    
+    ## Flag loci direction for plotting
+    df$direction <- "NS"
+    df$direction[df$loci %in% ips_hyper] <- "hiPSC-hyper"
+    df$direction[df$loci %in% ips_hypo] <- "hiPSC-hypo"
+
+    ## Aggregate the data for plotting
+    df$bin <- as.numeric(df$bin)
+    
+    df_grp <- df %>% dplyr::group_by(id, group, bin, direction) %>%
+        dplyr::summarise(mean=mean(value, na.rm = TRUE))
+    
+    scale_max <- function(x){ x / max(x, na.rm = TRUE)}
+    
+    scale_group_max <- function(id){
+
+        df0 <- df_grp[df_grp$id == id, ]
+        df0$norm <- NA
+        df0$norm[df0$direction == "hiPSC-hyper"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hyper"])
+        df0$norm[df0$direction == "hiPSC-hypo"] <- 
+            scale_max(df0$mean[df0$direction == "hiPSC-hypo"])
+        df0$norm[df0$direction == "NS"] <- 
+            scale_max(df0$mean[df0$direction == "NS"])
+
+        return(df0)
+    }              
+    
+    df_norm <- lapply(unique(df_grp$id), scale_group_max) %>%
+        do.call(rbind, .)
+
+    # Set line width for plots
+    line_mm <- 0.25
+    
+    pp01_keep <- ggplot(df_norm[df_norm$direction == "hiPSC-hypo", ],
+                        aes(x=bin, y = norm, group=id,
+                               fill=group, colour=group)) +
+        geom_line(size=0.5, alpha = 0.7) +
+        ylab("Normalised mCA/CA") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() + 
+    theme(plot.background = element_blank(),
+          panel.grid.minor.y = element_line(),
+          panel.grid.major.y = element_line(),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())    
+    
+pdf("wgbs/plots/pnp-ch-dmr-profile-plots.pdf", width = 3, height = 3)
+pp01_keep
+dev.off()
+
+pp01_keep
+```
+
+
+```{r, cache=TRUE}
+wb_ed_fig4fgh <- openxlsx::createWorkbook()
+
+openxlsx::addWorksheet(wb_ed_fig4fgh, sheetName = "ED_Fig_4f")
+openxlsx::writeData(wb = wb_ed_fig4fgh, sheet = "ED_Fig_4f",
+                    x = dmr_mCG[complete.cases(dmr_mCG), ])
+
+openxlsx::addWorksheet(wb_ed_fig4fgh, sheetName = "ED_Fig_4g")
+openxlsx::writeData(wb = wb_ed_fig4fgh, sheet = "ED_Fig_4g",
+                    x = pp01_keep$data)
+
+openxlsx::addWorksheet(wb_ed_fig4fgh, sheetName = "ED_Fig_4h")
+openxlsx::writeData(wb = wb_ed_fig4fgh, sheet = "ED_Fig_4h",
+                    x = gg_icr$data)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig4fgh,
+                       file = "ED_Figure_4fgh_source_data.xlsx", overwrite = TRUE)
+```
+
+```{r}
+sessionInfo()
+```
+

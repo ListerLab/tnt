@@ -1,0 +1,1128 @@
+---
+title: "Extended Data Figure 5: Comparative DMR analysis"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+---
+title: "CG-DMR detection"
+author: "Sam Buckberry"
+date: '2022-08-03'
+output: html_document
+---
+
+**This part of the analysis is run on external HPC**
+
+```{r, eval=FALSE}
+source("R/server_libraries_and_functions.R")
+```
+
+Sync required files (too large for git)
+```{bash, eval=FALSE}
+rsync -av --progress --partial-dir=/tmp --files-from=wgbs/dmrs/dmr_bsseq_CG_obj_list.txt hg19ips_samb@dug:/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/ wgbs/CG_bsobj/
+```
+
+```{bash, eval=FALSE}
+rsync -av --progress --partial-dir=/tmp  hg19ips_samb@dug:/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/wgbs/CG_bsobj/ wgbs/CG_bsobj/
+```
+
+Read in the sample data
+```{r, eval=FALSE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+### Merge ESC replicates for DMR calling
+
+Merge and collapse H9 ESC KSR replicates from Smith lab
+```{r, eval=FALSE}
+smith_primed_files <- mdat$BSseq_CG[mdat$Background == "H9" &
+                                   mdat$Media == "KSR" &
+                                   mdat$Lab == "Smith"]
+
+stopifnot(all(file.exists(smith_primed_files)))
+
+smith_primed_list <- lapply(X = smith_primed_files, FUN = readRDS)
+
+smith_primed_obj <- bsseq::combineList(smith_primed_list)
+
+merge_vec <- c("H9_KSR", "H9_KSR", "H9_KSR")
+names(merge_vec) <- sampleNames(smith_primed_obj)
+
+smith_collapsed_obj <- bsseq::collapseBSseq(BSseq = smith_primed_obj,
+                                            group = merge_vec)
+
+saveRDS(object = smith_collapsed_obj, file = "wgbs/CG_bsobj/Smith_H9_Primed_KSR_combined_CG_bsseq.Rds")
+```
+
+Merge MEL1 ESC E8 replicates
+```{r, eval=FALSE}
+mel1_esc_files <- mdat$BSseq_CG[mdat$Background == "MEL1" &
+                                   mdat$Media == "E8" &
+                                   mdat$State == "ESC"]
+
+stopifnot(all(file.exists(mel1_esc_files)))
+
+mel1_esc_list <- lapply(X = mel1_esc_files, FUN = readRDS)
+
+mel1_esc_obj <- bsseq::combineList(mel1_esc_list)
+
+merge_vec <- c("MEL1_ESC_E8", "MEL1_ESC_E8")
+names(merge_vec) <- sampleNames(mel1_esc_obj)
+
+mel1_collapsed_obj <- bsseq::collapseBSseq(BSseq = mel1_esc_obj,
+                                            group = merge_vec)
+
+saveRDS(object = mel1_collapsed_obj,
+        file = "wgbs/CG_bsobj/MEL1_ESC_E8_combined_CG_bsseq.Rds")
+```
+
+Merge H9 ESC E8 replicates
+```{r, eval=FALSE}
+h9_esc_files <- mdat$BSseq_CG[mdat$Background == "H9" &
+                                   mdat$Media == "E8" &
+                                   mdat$State == "ESC"]
+
+stopifnot(all(file.exists(h9_esc_files)))
+
+h9_esc_list <- lapply(X = h9_esc_files, FUN = readRDS)
+
+h9_esc_obj <- bsseq::combineList(h9_esc_list)
+
+merge_vec <- c("H9_ESC_E8", "H9_ESC_E8")
+names(merge_vec) <- sampleNames(h9_esc_obj)
+
+mel1_collapsed_obj <- bsseq::collapseBSseq(BSseq = h9_esc_obj,
+                                            group = merge_vec)
+
+saveRDS(object = mel1_collapsed_obj,
+        file = "wgbs/CG_bsobj/H9_ESC_E8_combined_CG_bsseq.Rds")
+```
+
+### DMR calling
+
+DMRs called using the script ```"wgbs/dmrs/run_dmrseq_dug.R"```
+
+### DMR assessment
+
+```{r, echo=FALSE}
+source("R/project_functions.R")
+```
+
+Load the metadata
+```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+```
+
+#### Primed vs ESC original submission data
+
+```{r, cache=TRUE}
+process_dmr <- function(dmr_obj, p = 0.05, delta = 0.2){
+    
+    # make mCG matrix
+    bsseq_fls <- basename(dmr_obj$manifest_data$rds_path)
+    bsseq_fls <- str_c("wgbs/CG_bsobj/", bsseq_fls)    
+    
+    mC_dat <- make_mC_matrix(obj_fls = bsseq_fls,
+                             gr = dmr_obj$dmr_granges,
+                             cores = 3)
+    
+    ind <- match(colnames(mC_dat), basename(dmr_obj$manifest_data$rds_path))
+    colnames(mC_dat) <- dmr_obj$manifest_data$id[ind]
+    
+    ## Calculate delta for groups
+    groups <- unique(dmr_obj$manifest_data$group)
+    g1_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[1]])
+    g2_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[2]])
+    group_delta <- g1_mean - g2_mean
+    
+    ## Setup mcols for output
+    df <- data.frame(g1_mean = g1_mean, g2_mean = g2_mean, delta = group_delta)
+    
+    mcols(dmr_obj$dmr_granges) <- cbind(mcols(dmr_obj$dmr_granges), df, mC_dat)
+    
+    # Set if DMR passes significance threshold
+    dmr_obj$dmr_granges$significant <- (dmr_obj$dmr_granges$pval < p) & 
+                           (abs(dmr_obj$dmr_granges$delta) >= delta)
+    
+    # remove sex chromosomes 
+    dmr_obj$dmr_granges <- dmr_obj$dmr_granges[seqnames(dmr_obj$dmr_granges) %in%
+                                                  str_c("chr", 1:22)]
+    
+    return(dmr_obj)
+}
+```
+
+```{r, cache=TRUE}
+dmr_a <- readRDS("wgbs/dmrs/dmrseq_primed_vs_esc_original/dmrseq_primed_vs_esc_original_ESC_vs_Primed_dmrseq_dmrs.Rds")
+```
+
+```{r, cache=TRUE}
+dmr_a <- process_dmr(dmr_a)
+```
+
+Heatmap
+```{r, cache=TRUE}
+pheatmap(mcols(dmr_a$dmr_granges)[dmr_a$dmr_granges$significant, 
+                                  dmr_a$manifest_data$id])
+```
+
+#### Primed vs TNT matched replicates
+```{r, cache=TRUE}
+dmr_matched <- readRDS("wgbs/dmrs/dmrseq_primed_vs_tnt_matched/primed_vs_tnt_matched_TNT_vs_Primed_dmrseq_dmrs.Rds") 
+```
+
+Process and filter DMRs
+```{r, cache=TRUE}
+dmr_matched <- process_dmr(dmr_obj = dmr_matched)
+
+esc_lines <- c("SRR1561745_merge", "RL2351_merge", "RL2352_merge",
+               "SRS004213", "SRS114877", "SRS606777", "SRS606778")
+
+fib_ind <- match(c("RL415", esc_lines, dmr_matched$manifest_data$id),
+                 mdat$Library_id)
+
+fib_dmr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[fib_ind],
+                               gr = dmr_matched$dmr_granges[dmr_matched$dmr_granges$significant],
+                               cores = 3)
+
+dmr_matched_table <- as.data.frame(dmr_matched$dmr_granges)
+write.csv(dmr_matched_table, "wgbs/processed_data/32F-matched-primed-tnt-cg-dmrs.csv")
+
+colnames(fib_dmr_mCG) <- mdat$Manuscript.Name[fib_ind]
+
+fib_coldat <- data.frame(row.names = colnames(fib_dmr_mCG),
+                         Group = mdat$Group[fib_ind])
+
+pdf("wgbs/plots/cg-dmr-32F-repeat-endpoint-heatmap.pdf", width = 4, height = 4)
+pheatmap(fib_dmr_mCG[complete.cases(fib_dmr_mCG), ],
+         show_rownames = FALSE, fontsize = 6,
+         annotation_col = fib_coldat,
+         clustering_distance_cols = "correlation",
+         clustering_method = "average")
+dev.off()
+
+```
+
+### MSCs
+
+```{r, cache=TRUE}
+dmr_msc <- readRDS("wgbs/dmrs/dmrseq_msc_primed_vs_tnt/dmrseq_msc_primed_vs_tnt_MSC_TNT_vs_MSC_Primed_dmrseq_dmrs.Rds")
+
+dmr_msc <- process_dmr(dmr_msc)
+
+msc_ind <- match(c("RL3161", "RL3162",
+                    esc_lines, dmr_msc$manifest_data$id), mdat$Library_id)
+
+msc_dmr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[msc_ind],
+                               gr = dmr_msc$dmr_granges[dmr_msc$dmr_granges$significant],
+                               cores = 3)
+
+colnames(msc_dmr_mCG) <- mdat$Manuscript.Name[msc_ind]
+
+pheatmap(msc_dmr_mCG[complete.cases(msc_dmr_mCG), ], show_rownames = FALSE)
+
+pdf("wgbs/plots/cg-dmr-msc-tnt-vs-primed-heatmap.pdf", width = 3, height = 4)
+pheatmap(msc_dmr_mCG[complete.cases(msc_dmr_mCG), ],
+         show_rownames = FALSE, fontsize = 6,
+         clustering_distance_cols = "correlation")
+dev.off()
+```
+
+
+#### Keratinocytes
+```{r, cache=TRUE}
+dmr_nhek <- readRDS("wgbs/dmrs/dmrseq_nhek_primed_vs_tnt/dmrseq_nhek_primed_vs_tnt_NHEK_Primed_vs_NHEK_TNT_dmrseq_dmrs.Rds")
+
+dmr_nhek <- process_dmr(dmr_nhek)
+
+nhek_ind <- match(c("RL3245", "RL3246", "RL3247",
+                    esc_lines, dmr_nhek$manifest_data$id), mdat$Library_id)
+
+nhek_dmr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[nhek_ind],
+                               gr = dmr_nhek$dmr_granges[dmr_nhek$dmr_granges$significant],
+                               cores = 3)
+
+colnames(nhek_dmr_mCG) <- mdat$Manuscript.Name[nhek_ind]
+
+pdf("wgbs/plots/cg-dmr-nhek-tnt-vs-primed-heatmap.pdf", width = 3, height = 4)
+pheatmap(nhek_dmr_mCG[complete.cases(nhek_dmr_mCG), ],
+         show_rownames = FALSE, fontsize = 6,
+         clustering_distance_cols = "correlation")
+dev.off()
+```
+
+
+Compare DMRs in context of ESCs and Fibroblasts
+```{r, cache=TRUE}
+esc_lines <- c("SRR1561745_merge", "RL2351_merge", "RL2352_merge",
+               "SRS004213", "SRS114877", "SRS606777", "SRS606778")
+
+ips_lines <- c(dmr_matched$manifest_data$id,
+               dmr_msc$manifest_data$id,
+               dmr_nhek$manifest_data$id)
+
+origin_lines <- c("RL415", "RL3245", "RL3161")
+
+lib_ids_a <- c(esc_lines, ips_lines, origin_lines)
+
+ind_a <- match(lib_ids_a, mdat$Library_id)
+
+# Make union DMRs
+union_dmr_matched <- GRangesList(
+    dmr_matched$dmr_granges[dmr_matched$dmr_granges$significant],
+    dmr_nhek$dmr_granges[dmr_nhek$dmr_granges$significant],
+    dmr_msc$dmr_granges[dmr_msc$dmr_granges$significant]
+    ) %>% unlist() %>% reduce()
+
+
+dmr_union_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG[ind_a],
+                                gr = union_dmr_matched, cores = 3)
+
+colnames(dmr_union_mCG) <- mdat$ID[ind_a]
+
+pheatmap(dmr_union_mCG[complete.cases(dmr_union_mCG), c(1:7, 26:31)],
+         show_rownames = FALSE,
+         clustering_distance_cols = 'correlation')
+
+pheatmap(dmr_union_mCG[complete.cases(dmr_union_mCG), c(1:7, 20:25)],
+         show_rownames = FALSE,
+         clustering_distance_cols = 'correlation')
+
+pheatmap(dmr_union_mCG[complete.cases(dmr_union_mCG), c(1:19)],
+         show_rownames = FALSE,
+         clustering_distance_cols = 'correlation')
+
+plot_pca(dmr_union_mCG, dim1 = 2, dim2 = 3)
+
+plot_dendrogram(dmr_union_mCG[complete.cases(dmr_union_mCG), c(1:7, 26:31)],
+                method = "pearson")
+```
+
+Heatmap the DMRs
+```{r}
+# 
+# dmr_mdat <- mdat[ind_a, c(1, 10)]
+# rownames(dmr_mdat) <- dmr_mdat$Library_id
+# dmr_mdat$Library_id <- NULL
+# 
+# hm1_labs <- mdat$Manuscript.Name[ind_a]
+# hm1_labs[grepl(pattern = "(32F)", hm1_labs)] <- "Fibroblast-32F"
+# hm1_labs[grepl(pattern = "(38F)", hm1_labs)] <- "Fibroblast-38F"
+# 
+# dmr_hm1 <- pheatmap(dmr_match_mCG[complete.cases(dmr_match_mCG) &
+#                                   dmr_matched$dmr_granges$pval < 0.05, ],
+#          annotation_col = dmr_mdat,
+#          labels_col = hm1_labs,
+#          fontsize = 6,
+#          show_rownames = FALSE,
+#          border_color = NA,
+#          clustering_distance_cols = "correlation")
+# 
+# ## Export plot for manuscript layout
+# pdf("manuscript_figure_plots/revision/cg-dmr-batch-2-heatmap.pdf",
+#     height = 4, width = 4)
+# dmr_hm1
+# 
+# dev.off()
+# 
+# dmr_hm1
+```
+
+DMR delta plots
+```{r}
+# sig <- dmr_matched$dmr_granges$pval < 0.05
+# 
+# primed_mean <- rowMeans(dmr_match_mCG[sig, dmr_mdat$Group == "Primed-hiPSC"], na.rm = TRUE) 
+# tnt_mean <- rowMeans(dmr_match_mCG[sig, dmr_mdat$Group == "TNT-hiPSC"], na.rm = TRUE)
+# esc_mean <- rowMeans(dmr_match_mCG[sig, dmr_mdat$Group == "hESC"], na.rm = TRUE)
+# fblast_mean <- dmr_match_mCG[sig ,"RL415"]
+# 
+# primed_esc_delta <- primed_mean - esc_mean
+# tnt_esc_delta <- tnt_mean - esc_mean
+# primed_fblast_delta <- primed_mean - fblast_mean
+# tnt_fblast_delta <- tnt_mean - fblast_mean
+# 
+# df <- data.frame(iPSC = c(primed_esc_delta, tnt_esc_delta),
+#                  HDF = c(primed_fblast_delta, tnt_fblast_delta),
+#                  group = c(rep("Primed-hiPSC", times=length(primed_esc_delta)),
+#                            rep("TNT-hiPSC", times=length(tnt_esc_delta))))
+# 
+# ggMarg_primed <- ggplot(df[df$group == "Primed-hiPSC", ],
+#                                 aes(x = iPSC, y = HDF)) +
+#     #scale_colour_manual(values = cols[1]) +
+#     geom_vline(xintercept = c(-.2, .2), alpha=0.5, linetype = "dashed") + 
+#     geom_hline(yintercept = c(-.2, .2), alpha=0.5, linetype = "dashed") +
+#     geom_point(alpha=0.5, inherit.aes = TRUE, size=1) +
+#     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) +
+#     scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+#     ylab("Fibroblast mCG - hiPSC mCG") +
+#     xlab("hESC mCG - hiPSC mCG") +
+#     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+# 
+# ggMarg_primed <- ggExtra::ggMarginal(ggMarg_primed)
+# 
+# ggMarg_tnt <- ggplot(df[df$group == "TNT-hiPSC", ],
+#                                 aes(x = iPSC, y = HDF)) +
+#     geom_vline(xintercept = c(-.2, .2), alpha=0.5, linetype = "dashed") + 
+#     geom_hline(yintercept = c(-.2, .2), alpha=0.5, linetype = "dashed") +
+#     geom_point(alpha=0.5, inherit.aes = TRUE, size=1) +
+#     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) +
+#     scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+#     ylab("Fibroblast mCG - hiPSC mCG") +
+#     xlab("hESC mCG - hiPSC mCG") +
+#     scale_colour_manual(values = vitC[c(6,1)]) +
+#     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+# 
+# ggMarg_tnt <- ggExtra::ggMarginal(ggMarg_tnt)
+# 
+# cols <- reprog_pal2[c(2,1)] %>% str_sub(end = -3)
+# 
+# gg_dmr_hist <- ggplot(df, aes(x = iPSC, fill=group)) +
+#     geom_histogram(bins = 40) +
+#     scale_fill_manual(values = cols, drop = FALSE) +
+#     facet_grid(group~.) +
+#     geom_vline(xintercept = 0, linetype="dashed") +
+#     scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) +
+#     scale_y_continuous(expand = c(0,0)) +
+#     #scale_colour_manual(values = c("grey")) +
+#     xlab("mCG DMR difference \n (hiPSC mCG - hESC mCG)") +
+#     ylab("CG-DMR count") +
+#     sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+# 
+# pdf("manuscript_figure_plots/revision/cg-dmr-batch-2-group-histogram.pdf",
+#     width = 2, height = 2.5)
+# gg_dmr_hist
+# dev.off()
+```
+
+
+#### MEL1 DMRs
+```{r, cache=TRUE}
+dmr_mel1 <- readRDS("wgbs/dmrs/MEL1_dmrs/dmr_out/esc_vs_primed_dmrseq_dmrs.Rds")
+
+dmr_mel1 <- process_dmr(dmr_mel1, p = 0.05, delta = 0)
+
+```
+
+
+#### Re-analysis Lister 2011
+```{r, cache=TRUE}
+dmr_lister <- readRDS("wgbs/dmrs/dmrseq_lister_reanalysis/lister_primed_vs_esc_Primed_vs_ESC_dmrseq_dmrs.Rds")
+
+dmr_lister <- process_dmr(dmr_lister, p = 0.05, delta = 0)
+
+pheatmap(mcols(dmr_lister$dmr_granges)[dmr_lister$dmr_granges$significant, 
+                                       dmr_lister$manifest_data$id])
+
+## Add our data and plot
+primary_dat <- mdat$BSseq_CG[mdat$Background %in% c("32F", "38F") &
+                                 mdat$Group %in% c("TNT-hiPSC", "Primed-hiPSC") &
+                                 mdat$In_manuscript == "YES"]
+
+dmr_lister_mCG <- make_mC_matrix(obj_fls = primary_dat,
+                                 gr = dmr_lister$dmr_granges[dmr_lister$dmr_granges$significant],
+                                 cores = 3)
+
+dmr_lister_mCG <- cbind(mcols(dmr_lister$dmr_granges)
+                        [dmr_lister$dmr_granges$significant, 
+                                       dmr_lister$manifest_data$id],
+                        dmr_lister_mCG)
+
+pheatmap(dmr_lister_mCG[complete.cases(dmr_lister_mCG), ],
+         cluster_cols = FALSE, gaps_col = c(4, 6, 18, 22),
+         show_rownames = FALSE)
+
+
+```
+
+#### Re-analysis Ma 2015
+```{r, cache=TRUE}
+dmr_ma <- readRDS("wgbs/dmrs/dmrseq_mitalipov_reanalysis/mitalipov_primed_sendai_vs_esc_Primed_vs_ESC_dmrseq_dmrs.Rds")
+
+dmr_ma <- process_dmr(dmr_ma)
+
+pheatmap(mcols(dmr_ma$dmr_granges)[dmr_ma$dmr_granges$significant,
+                                   dmr_ma$manifest_data$id])
+```
+
+
+Delta ESC plots
+```{r, cache=TRUE}
+plot_esc_delta_histograms <- function(dmr_obj, title=""){
+    
+    # Get the GRanges DMR object
+    dmr_gr <- dmr_obj$dmr_granges[dmr_obj$dmr_granges$significant]
+
+    # Get the library IDs for plot
+    esc_lines <- c("SRR1561745_merge", "RL2351_merge", "RL2352_merge",
+               "SRS004213", "SRS114877", "SRS606777", "SRS606778")
+    
+    ips_lines <- dmr_obj$manifest_data$id
+    
+    # Get the files matching IDs
+    ind <- match(c(esc_lines, ips_lines), mdat$Library_id)
+    
+    fls <- mdat$BSseq_CG[ind]
+    
+    # Make mC matrix
+    mat <- make_mC_matrix(obj_fls = fls, gr = dmr_gr, cores = 3)
+    colnames(mat) <- mdat$Library_id[ind]
+    
+    # Calculate ESC delta
+    esc_mean <- rowMeans(mat[ ,esc_lines], na.rm = TRUE)
+    
+    delta_mat <- mat[ ,ips_lines] - esc_mean
+    
+    # Format for plotting    
+    delta_mat <- reshape2::melt(delta_mat)
+    
+    ind2 <- match(delta_mat$Var2, mdat$Library_id)
+    
+    delta_mat$Group <- mdat$Group[ind2]
+    
+    ggplot(delta_mat, aes(x = value)) +
+        geom_histogram(bins = 50) +
+        facet_grid(Group+Var2~.) +
+        geom_vline(xintercept = 0) +
+        scale_x_continuous(limits = c(-1, 1)) +
+        ylab("DMR count") + xlab("hiPSC mCG - hESC mCG") +
+        ggtitle(title) +
+        sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+}
+
+gg_delta_nhek <- plot_esc_delta_histograms(dmr_obj = dmr_nhek,
+                                           title = "Keratinocytes")
+
+gg_delta_msc <- plot_esc_delta_histograms(dmr_obj = dmr_msc,
+                                           title = "MSCs")
+
+gg_delta_fib <- plot_esc_delta_histograms(dmr_obj = dmr_matched,
+                                           title = "Fibroblasts")
+
+
+```
+
+### Plot combined DMRs
+```{r, cache=TRUE}
+all_dmrs <- c(dmr_a$dmr_granges[dmr_a$dmr_granges$significant],
+             dmr_matched$dmr_granges[dmr_matched$dmr_granges$significant],
+             dmr_lister$dmr_granges[dmr_lister$dmr_granges$significant],
+             dmr_ma$dmr_granges[dmr_ma$dmr_granges$significant])
+
+all_fls <- c(dmr_a$manifest_data$rds_path,
+             dmr_matched$manifest_data$rds_path,
+             dmr_lister$manifest_data$rds_path,
+             dmr_ma$manifest_data$rds_path,
+             mdat$BSseq_CG[mdat$Group == "TNT-hiPSC" & 
+                                        mdat$Batch == "A"])
+all_fls <- str_remove(all_fls, "/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/")
+all_fls <- unique(all_fls)
+
+all_ind <- match(all_fls, mdat$BSseq_CG)
+all_groups <- mdat$Group[all_ind]
+all_labs <- mdat$Lab[all_ind]
+all_batch <- mdat$Batch[all_ind]
+all_link <- str_c(all_groups, all_labs, all_batch, sep = "_")
+all_link <- factor(all_link, levels = c("hESC_Ecker_Ecker",
+                                        "hESC_Mitalipov_Mitalipov",
+                                        "hESC_Smith_Smith",
+                                        "hESC_Lister_A",
+                                        "Primed-hiPSC_Lister_A",
+                                        "Primed-hiPSC_Lister_B",
+                                        "TNT-hiPSC_Lister_A",
+                                        "Primed-hiPSC_Lister_C",
+                                        "TNT-hiPSC_Lister_C",
+                                        "Primed-hiPSC_Ecker_Ecker",
+                                        "Primed-hiPSC_Mitalipov_Mitalipov"))
+
+all_link[order(all_link)]
+
+plot_ind <- order(all_link)
+
+all_dmr_mCG <- make_mC_matrix(obj_fls = all_fls, all_dmrs, cores = 3)
+colnames(all_dmr_mCG) <- mdat$Library_id[match(colnames(all_dmr_mCG),
+                                               basename(mdat$BSseq_CG))]
+
+
+gaps_row <- cumsum(c(length(dmr_a$dmr_granges[dmr_a$dmr_granges$significant]),
+                length(dmr_matched$dmr_granges[dmr_matched$dmr_granges$significant]),
+                length(dmr_lister$dmr_granges[dmr_lister$dmr_granges$significant]),
+                length(dmr_ma$dmr_granges[dmr_ma$dmr_granges$significant])))
+
+pheatmap(all_dmr_mCG[ ,plot_ind],
+         gaps_col = c(7, 11, 13, 19, 25, 29),
+         gaps_row = gaps_row,
+         cluster_rows = FALSE,
+         cluster_cols = FALSE, 
+         show_rownames = FALSE)
+```
+
+
+### Plot DMR overlaps
+
+```{r, cache=TRUE}
+# Just use P < 0.05 to make a permissive comparison (no delta filter)
+
+# h3k9 <- 
+# fib_lad <- 
+# esc_lad <-
+# constit_lad <- 
+# pmd <- 
+# ch_dmr <- 
+# 
+
+dmr_list <- list(dmr_a$dmr_granges[dmr_a$dmr_granges$pval < 0.05],
+                dmr_matched$dmr_granges[dmr_matched$dmr_granges$pval < 0.05],
+                dmr_lister$dmr_granges[dmr_lister$dmr_granges$pval < 0.05],
+                dmr_ma$dmr_granges[dmr_ma$dmr_granges$pval < 0.05])
+
+names(dmr_list) <- c("Batch_A", "Matched", "Lister", "Ma")
+saveRDS(dmr_list, "wgbs/dmrs/dmr_list_filtered.Rds")
+
+dmr_list <- readRDS("wgbs/dmrs/dmr_list_filtered.Rds")
+
+gr_to_bed(dmr_list$Batch_A,
+          out_path = "wgbs/processed_data/primary_fibroblast_dmrs_filt.bed")
+gr_to_bed(dmr_list$Lister,
+          out_path = "wgbs/processed_data/lister_2011_recall_dmrs_filt.bed")
+gr_to_bed(dmr_list$Ma,
+          out_path = "wgbs/processed_data/ma_2014_recall_dmrs_filt.bed")
+
+# Make union DMR set
+union_dmrs <- GRangesList(dmr_list) %>% unlist %>% reduce()
+
+dmr_olaps <- lapply(dmr_list, overlapsAny, query = union_dmrs)
+dmr_olaps <- do.call(cbind, dmr_olaps)
+dmr_olaps <- dmr_olaps + 0 #binarise the data
+colnames(dmr_olaps) <- c("Primed vs ESC",
+                         "Primed vs TNT (B)",
+                         "Lister Primed vs TNT",
+                         "Ma Primed vs ESC")
+
+dmr_olaps <- data.frame(dmr_olaps)
+rownames(dmr_olaps) <- gr_to_loci(union_dmrs)
+
+pdf("wgbs/plots/cg-dmr-overlap-upset.pdf",
+    width = 4, height = 2.5)
+UpSetR::upset(dmr_olaps[ ,-c(2)], order.by = "freq")
+dev.off()
+```
+
+```{r}
+wb_ed_fig5 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5a")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5a",
+                    x = dmr_olaps[ ,-c(2)])
+```
+
+
+```{r, eval=FALSE}
+source("R/server_libraries_and_functions.R")
+all_elements_gr <- readRDS("resources/all_genomic_elements_granges_final.Rds")
+dmr_list <- readRDS("wgbs/dmrs/dmr_list_filtered.Rds")
+
+
+#### Peak enrichment
+test_dmr_enrichment <- function(target_element="Fibroblast_H3K9me3", test_gr,
+                                 permutations=200, cores=20, alt="auto"){
+
+    #stopifnot(file.exists(test_bed))
+    gc()
+    message(Sys.time())+
+        message(str_c("Running ", target_element, "..."))
+    target_gr <- all_elements_gr[all_elements_gr$class == target_element]
+    message(str_c("n = "), length(target_gr))
+
+    #test_gr <- bed_to_gr(test_bed)
+    mcols(test_gr) <- NULL
+    test_gr <- resize(test_gr, width = 100, fix = "center")
+
+    set.seed(123)
+    perm_test_results <- regioneR::permTest(A=test_gr, B=target_gr,
+                                            #alternative = "auto",
+                                            alternative = alt,
+                                            randomize.function=regioneR::randomizeRegions,
+                                            ntimes = permutations,
+                                            evaluate.function=regioneR::numOverlaps,
+                                            count.once = TRUE,
+                                            genome="hg19",
+                                            #mask = unmappable_gr,
+                                            allow.overlaps=FALSE,
+                                            per.chromosome=TRUE,
+                                            mc.cores=cores,
+                                            mc.set.seed=FALSE,
+                                            force.parallel=TRUE)
+
+    lz <- regioneR::localZScore(pt=perm_test_results, A=test_gr, B=target_gr,
+                      step = mean(width(test_gr)/2),
+                      window = 100000)
+
+    results <- list(pt=perm_test_results, lz=lz, element=target_element)
+
+    message("Done!")
+    return(results)
+}
+
+regions <- c("Fibroblast_LAD", "Fibroblast_PMD", "Fibroblast_H3K9me3", 
+             "ESC_H3K9me3", "ESC_LAD",
+             "Constitutive_LAD", "Constitutive_H3K9me3")
+
+lister_enrich <- lapply(X = regions, FUN = test_dmr_enrichment,
+                        test_gr = dmr_list$Lister)
+saveRDS(lister_enrich, "wgbs/processed_data/lister-2011-cg-dmr-enrichment-list.Rds")
+
+ma_enrich <- lapply(X = regions, FUN = test_dmr_enrichment,
+                        test_gr = dmr_list$Ma)
+
+saveRDS(ma_enrich, "wgbs/processed_data/ma-2014-cg-dmr-enrichment-list.Rds")
+
+## Ch-DMR enrichments
+CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+mcols(CH_dmr)$class <- "CH_DMR"
+
+all_elements_gr <- c(all_elements_gr, CH_dmr)
+
+primary_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
+                                             cores = 3,
+                                             test_gr = dmr_list$Batch_A)
+
+lister_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
+                                             cores = 3,
+                                             test_gr = 4)
+
+ma_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
+                                             cores = 3,
+                                             test_gr = dmr_list$Ma)
+
+## Get data on promoter and enhancer enrichment in CH-DMRs
+promoter_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
+                                             cores = 3,
+                                             test_gr = all_elements_gr[all_elements_gr$class == "Promoter"])
+
+enh_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
+                                             cores = 3,
+                                             test_gr = all_elements_gr[all_elements_gr$class == "Enhancer"])
+
+
+grps <- c("Primary_fibroblasts", "Lister_2011", "Ma 2014", "Promoters", "Enhancers")
+enrich_ch_df <- data.frame(Group=factor(grps, levels=rev(grps)), Zscore=c(primary_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
+                       lister_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
+                       ma_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
+                       promoter_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
+                       enh_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore))
+
+pdf("wgbs/plots/lister-ma-cg-dmr-in-ch-dmr-enrichment-plots.pdf",
+    height = 1.3, width = 3)
+ggplot(data = enrich_ch_df, aes(x = Group, y = Zscore)) +
+    geom_col() + coord_flip() + sams_pub_theme()
+dev.off()
+
+## Percentage of overlapping CG-DMRs with CH-DMRs
+lapply(X = dmr_list,
+       FUN = function(x){sum(overlapsAny(x, subject = CH_dmr))/length(x)})
+```
+
+
+```{r, cache=TRUE}
+lister_enrich <- readRDS("wgbs/processed_data/lister-2011-cg-dmr-enrichment-list.Rds")
+ma_enrich <- readRDS("wgbs/processed_data/ma-2014-cg-dmr-enrichment-list.Rds")
+
+process_enrichments <- function(enrich_list){
+
+    get_stats <- function(x){
+
+        results <- enrich_list[[x]]
+
+        df <- data.frame(#file=results$test_bed,
+                         element=results$element,
+                         z_score=results[[1]]$`regioneR::numOverlaps`$zscore,
+                         p_value=results[[1]]$`regioneR::numOverlaps`$pval,
+                         permutations=results[[1]]$`regioneR::numOverlaps`$ntimes,
+                         alternative=results[[1]]$`regioneR::numOverlaps`$alternative,
+                         observed=results[[1]]$`regioneR::numOverlaps`$observed)
+        return(df)
+
+    }
+
+    stats_df <- lapply(1:length(enrich_list), get_stats) %>% do.call(rbind, .)
+
+    return(stats_df)
+
+}
+
+ma_dat <- process_enrichments(enrich_list = ma_enrich)
+ma_dat$dataset <- "Ma et al. 2014"
+
+lister_dat <- process_enrichments(enrich_list = lister_enrich)
+lister_dat$dataset <- "Lister et al. 2011"
+
+
+enrich_dat <- rbind(ma_dat, lister_dat)
+
+## Remove constitutive to simplify comparison
+enrich_dat <- enrich_dat[!grepl(pattern = "Constitutive", enrich_dat$element), ]
+enrich_dat <- enrich_dat[!grepl(pattern = "PMD", enrich_dat$element), ]
+
+enrich_dat$element <- factor(enrich_dat$element,
+                             levels=c("ESC_LAD", "ESC_H3K9me3",
+                                      "Fibroblast_LAD", "Fibroblast_H3K9me3"))
+
+gg_enrich_bar <- ggplot(enrich_dat, aes(x = element, y=z_score)) +
+    geom_col() +
+    facet_grid(.~dataset, space = "free", drop = TRUE, scales = "free") +
+    sams_pub_theme(legend_pos = "right", x.text.angle = 0, hjust = 0.5) + 
+    coord_flip()
+gg_enrich_bar
+
+pdf("wgbs/plots/lister-ma-cg-dmr-enrichment-plots.pdf", height = 1.3, width = 4)
+gg_enrich_bar
+dev.off()
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5c")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5c",
+                    x = gg_enrich_bar$data)
+```
+
+
+Plot DMR delta histograms
+```{r}
+
+hist(dmr_list$Lister$delta)
+hist(dmr_list$Ma$delta)
+hist(dmr_list$Batch_A$delta)
+
+hist_df <- data.frame(Group=c(
+    rep("This study", times=length(dmr_list$Batch_A)),
+    rep("Lister_2011", times=length(dmr_list$Lister)),
+    rep("Ma 2014", times=length(dmr_list$Ma))),
+    Delta=c(
+        dmr_list$Batch_A$delta,
+        dmr_list$Lister$delta,
+        dmr_list$Ma$delta))
+
+
+gg_comparitive_hist <- ggplot(hist_df, aes(x = -Delta)) + 
+    geom_histogram() + 
+    facet_grid(.~Group) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+pdf("wgbs/plots/lister-ma-cg-dmr-histograms.pdf", width = 3.5,
+    height = 1.5)
+gg_comparitive_hist
+dev.off()
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5b")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5b",
+                    x = gg_comparitive_hist$data)
+```
+
+
+Plot heatmap of union DMRs 
+```{r, cache=TRUE}
+fl_list <- c(dmr_a$manifest_data$rds_path,
+             dmr_matched$manifest_data$rds_path,
+             dmr_lister$manifest_data$rds_path,
+             dmr_ma$manifest_data$rds_path) %>%
+    str_remove("/d/home/hg19ips/hg19ips_samb/mcc_hg19ips/sam/hs-reprogram/") %>%
+    unique()
+
+fl_list <- c(fl_list, mdat$BSseq_CG[mdat$Group == "TNT-hiPSC" & 
+                                        mdat$Batch == "A"])
+
+union_dmr_mCG <- make_mC_matrix(obj_fls = fl_list,
+                                gr = union_dmrs, cores = 3) 
+
+ind_b <- match(colnames(union_dmr_mCG), basename(mdat$BSseq_CG))
+colnames(union_dmr_mCG) <- mdat$Library_id[ind_b]
+
+coldat <- data.frame(group=mdat$Group[ind_b],
+                     lab=mdat$Lab[ind_b])
+rownames(coldat) <- mdat$Library_id[ind_b]
+
+pheatmap(union_dmr_mCG[complete.cases(union_dmr_mCG), ], scale = 'row',
+         annotation_col = coldat,
+         show_rownames = FALSE)
+
+## PCA plot
+
+# Remove incomplete cases
+mat <- union_dmr_mCG[complete.cases(union_dmr_mCG), ]
+        
+# Transpose
+mat <- t(mat)
+
+# Calculate PC's
+pr <- prcomp(x = mat, scale.=TRUE)
+        
+## Scree plot
+gg_scree <- ggplot2::qplot(x = factor(1:10),
+           y = ((summary(pr)$importance[2, ] * 100)[1:10])) +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5) +
+    ylab("Varaince explained (%)") + xlab("Principal component")
+        
+pc1 <- (summary(pr)$importance[2, 1] * 100) %>% round(digits = 1)
+pc2 <- (summary(pr)$importance[2, 2] * 100) %>% round(digits = 1)
+pc3 <- (summary(pr)$importance[2, 3] * 100) %>% round(digits = 1)
+pc4 <- (summary(pr)$importance[2, 4] * 100) %>% round(digits = 1)
+        
+pc1_dat <- pr$x[ ,1]
+pc2_dat <- pr$x[ ,2]
+pc3_dat <- pr$x[ ,3]
+pc4_dat <- pr$x[ ,4]
+        
+samples <- rownames(pr$x)
+    
+pca_df <- data.frame(Sample=samples, PC1=pc1_dat,
+                     PC2=pc2_dat, PC3=pc3_dat, PC4=pc4_dat)
+        
+ind_pca <- match(pca_df$Sample, mdat$Library_id)
+pca_df$group <- mdat$Group[ind_pca]
+pca_df$id <- mdat$Manuscript.Name[ind_pca]
+pca_df$lab <- mdat$Lab[ind_pca]
+pca_df$background <- mdat$Background[ind_pca]        
+
+gg_pc12 <-  ggplot(data = pca_df,
+                  mapping = aes(x = PC1, y = PC2, label=id,
+                                fill=group, colour=group)) +
+    geom_point(alpha=0.8, size=2) +
+    theme_linedraw() +
+    stat_ellipse(level=0.9,
+                 geom = "polygon",
+                 aes(fill = group, colour=group), 
+                 alpha = 0.1) +
+    theme(panel.grid = element_line(colour = 'grey')) +
+    scale_color_manual(values = reprog_pal) +
+    scale_fill_manual(values = reprog_pal) +
+    #geom_text_repel(data = subset(pca_df,
+    #                              samples %in% samples),
+    #                point.padding = unit(1, "lines"), size=3) +
+    xlab(str_c("PC1 (", pc1, "%)")) +
+    ylab(str_c("PC2 (", pc2, "%)")) +
+    theme(legend.position = "none")
+        
+gg_pc23 <-  ggplot(data = pca_df,
+                   mapping = aes(x = PC2, y = PC3, label=id,
+                                 fill=group, colour=group)) +
+    geom_point(alpha=0.8, size=2) +
+    theme_linedraw() +
+    stat_ellipse(level=0.9,
+                 geom = "polygon",
+                 aes(fill = group, colour=group), 
+                 alpha = 0.1) +
+    theme(panel.grid = element_line(colour = 'grey')) +
+    scale_color_manual(values = reprog_pal) +
+    scale_fill_manual(values = reprog_pal) +
+    #geom_text_repel(data = subset(pca_df,
+    #                              samples %in% samples),
+    #                point.padding = unit(1, "lines"), size=3) +
+    xlab(str_c("PC2 (", pc2, "%)")) +
+    ylab(str_c("PC3 (", pc3, "%)")) +
+    theme(legend.position = "none")
+
+gg_pc34 <-  ggplot(data = pca_df, 
+                   mapping = aes(x = PC3, y = PC4, label=id,
+                                 fill=group, colour=group)) +
+    geom_point(alpha=0.8, size=2) +
+    theme_linedraw() +
+    stat_ellipse(level=0.9,
+                 geom = "polygon",
+                 aes(fill = group, colour=group), 
+                 alpha = 0.1) +
+    theme(panel.grid = element_line(colour = 'grey')) +
+    scale_color_manual(values = reprog_pal) +
+    scale_fill_manual(values = reprog_pal) +
+    #geom_text_repel(data = subset(pca_df,
+    #                              samples %in% samples),
+    #                point.padding = unit(1, "lines"), size=3) +
+    xlab(str_c("PC3 (", pc3, "%)")) +
+    ylab(str_c("PC4 (", pc4, "%)")) +
+    theme(legend.position = "none")
+
+
+pdf("wgbs/plots/cg-dmr-all-union-pca-plots.pdf",
+    width = 8.5, height = 2)
+plot_grid(gg_scree, gg_pc12, gg_pc23, gg_pc34,
+          nrow = 1, ncol = 4)
+dev.off()
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5g_upper_left")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5g_upper_left",
+                    x = ((summary(pr)$importance[2, ] * 100)[1:10]))
+
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5g_upper_right")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5g_upper_right",
+                    x = gg_pc12$data)
+
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5g_lower_left")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5g_lower_left",
+                    x = gg_pc23$data)
+
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5g_lower_right")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5g_lower_right",
+                    x = gg_pc34$data)
+
+```
+
+
+```{r}
+plot_grid(gg_scree, gg_pc12, gg_pc23, gg_pc34,
+          nrow = 1, ncol = 3)
+
+
+gg_pc12 <-  ggplot(data = pca_df,
+                  mapping = aes(x = PC1, y = PC2, label=id,
+                                fill=group, colour=group, shape=lab)) +
+    geom_point(alpha=0.8, size=2) +
+    theme_linedraw() +
+    theme(panel.grid = element_line(colour = 'grey')) +
+    scale_color_manual(values = reprog_pal) +
+    scale_fill_manual(values = reprog_pal) +
+    #geom_text_repel(data = subset(pca_df,
+    #                              samples %in% samples),
+    #                point.padding = unit(1, "lines"), size=3) +
+    xlab(str_c("PC1 (", pc1, "%)")) +
+    ylab(str_c("PC2 (", pc2, "%)"))
+        
+gg_pc23 <-  ggplot(data = pca_df,
+                   mapping = aes(x = PC2, y = PC3, label=id,
+                                 fill=group, colour=group)) +
+    geom_point(alpha=0.8, size=2) +
+    theme_linedraw() +
+    theme(panel.grid = element_line(colour = 'grey')) +
+    scale_color_manual(values = reprog_pal) +
+    scale_fill_manual(values = reprog_pal) +
+    #geom_text_repel(data = subset(pca_df,
+    #                              samples %in% samples),
+    #                point.padding = unit(1, "lines"), size=3) +
+    xlab(str_c("PC2 (", pc2, "%)")) +
+    ylab(str_c("PC3 (", pc3, "%)")) +
+    theme(legend.position = "none")
+```
+
+Plot PC's against varibles
+```{r, cache=TRUE}
+pca_df_melt <- reshape2::melt(pca_df)
+
+pca_df_melt$group <- factor(pca_df_melt$group,
+                            levels=c("Primed-hiPSC", "TNT-hiPSC", "hESC"))
+
+gg_pc_var <- ggplot(pca_df_melt, aes(x = group, y = value)) +
+    geom_point(alpha=0.4) +
+    facet_grid(.~variable) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6,
+                                     colour = 'black'),
+          axis.text.y = element_text(size=6, colour='black', angle = 0),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks = element_line(color = 'black', size = line_mm))
+
+gg_pc_lab <- ggplot(pca_df_melt, aes(x = lab, y = value)) +
+    geom_point(alpha=0.4) +
+    facet_grid(.~variable) + 
+        theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6,
+                                     colour = 'black'),
+          axis.text.y = element_text(size=6, colour='black', angle = 0),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks = element_line(color = 'black', size = line_mm))
+
+pdf("wgbs/plots/cg-dmr-all-union-pca_point-plots.pdf", width = 3, height = 4)
+plot_grid(gg_pc_var, gg_pc_lab, align = "v", nrow = 2)
+dev.off()
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5h")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5h",
+                    x = gg_pc_var$data)
+
+openxlsx::addWorksheet(wb_ed_fig5, sheetName = "ED_Fig_5i")
+openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5i",
+                    x = gg_pc_lab$data)
+```
+
+
+```{r, cache=TRUE}
+
+run_anova <- function(variable){
+    
+        df <- data.frame(variable = pca_df[ ,variable])
+        df <- cbind(df, pca_df[ ,str_c("PC", 1:4)])
+    
+        aov_lab_pc1 <- aov(PC1~variable, data = df) %>% summary()
+        aov_lab_pc1 <- aov_lab_pc1[[1]]$`Pr(>F)`[1]
+        
+        aov_lab_pc2 <- aov(PC2~variable, data = df) %>% summary()
+        aov_lab_pc2 <- aov_lab_pc2[[1]]$`Pr(>F)`[1]
+
+        aov_lab_pc3 <- aov(PC3~variable, data = df) %>% summary()
+        aov_lab_pc3 <- aov_lab_pc3[[1]]$`Pr(>F)`[1]
+        
+        aov_lab_pc4 <- aov(PC4~variable, data = df) %>% summary()
+        aov_lab_pc4 <- aov_lab_pc4[[1]]$`Pr(>F)`[1]
+
+        out <- data.frame(variable=variable, PC=str_c("PC", 1:4),
+                          p=c(aov_lab_pc1, aov_lab_pc2,
+                                    aov_lab_pc3, aov_lab_pc4))
+        
+        return(out)
+}
+
+aov_out <- rbind(run_anova("lab"), run_anova("background"), run_anova("group"))
+aov_out$p_adjust <- p.adjust(p = aov_out$p, method = "bonferroni")
+aov_out$p_log <- -log10(aov_out$p_adjust)
+
+aov_mat <- aov_out[ ,c(1,2,5)] %>%
+    tidyr::pivot_wider(names_from = PC, values_from = p_log) %>% data.frame()
+
+aov_mat <- data.frame(row.names = aov_mat$variable, aov_mat[ ,2:5])
+
+my_palette <- colorRampPalette(colors = c("white", "firebrick"))
+
+saveRDS(aov_mat, file = "wgbs/processed_data/wgbs-cg-dmr-pca-anova.Rds")
+
+aov_mat <- readRDS("wgbs/processed_data/wgbs-cg-dmr-pca-anova.Rds")
+
+pdf("wgbs/plots/cg-dmr-all-union-pca-anova-heatmap.pdf",
+    width = 3, height = 1.5)
+pheatmap(aov_mat, cluster_rows = FALSE, cluster_cols = FALSE,
+         color = my_palette(n = 20))
+dev.off()
+
+aov_mat_unlog <- 1/(10^aov_mat)
+
+```
+
+```{r}
+openxlsx::saveWorkbook(wb = wb_ed_fig5,
+                       file = "ED_Figure_5abcghi_source_data.xlsx", overwrite = TRUE)
+```
+
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
