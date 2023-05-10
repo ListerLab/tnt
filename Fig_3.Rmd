@@ -1,5 +1,5 @@
 ---
-title: "Figure 2 and associated extended data figures"
+title: "Figure 3 and associated extended data figures"
 author: "Sam Buckberry"
 date: "`r Sys.Date()`"
 output: html_document
@@ -1724,6 +1724,9 @@ openxlsx::addWorksheet(wb_fig3, sheetName = "Fig_3p")
 openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3p",
                     x = gg_nsc_mch_dmr$data)
 ```
+
+
+
 
 Close out source data files
 ```{r, cache=TRUE}

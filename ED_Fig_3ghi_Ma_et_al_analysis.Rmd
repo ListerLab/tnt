@@ -1,84 +1,322 @@
 ---
-title: "Untitled"
+title: "Extended Data Figures 3g,h,i: Ma et al CG DMR reanalysis"
 author: "Sam Buckberry"
-date: "25/11/2021"
+date: "`r Sys.Date()`"
 output: html_document
 ---
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-```{r}
+```{r, message=FALSE, warning=FALSE, error=FALSE}
 source("R/project_functions.R")
 ```
 
 
-# Read the DMR file
-DMRs were called using the script `wgbs/dmrs/run_dmrseq_dug.R`
-```{r}
-dmrs <- readRDS("wgbs/dmrs/dmr_out/Mitalipov_iPSC_vs_ESC_ESC_vs_iPSC_dmrseq_dmrs.Rds")
+This section was run on remote server and code is not executed here
+```{r setup, eval=FALSE}
+### Call iPSC vs ESC DMRs
+library(bsseq)
+library(dmrseq)
+library(magrittr)
+library(stringr)
+library(BiocParallel)
+library(data.table)
+
+obj_files <- c("SRS606777_CG_bsseq_obj.Rds",
+               "SRS606778_CG_bsseq_obj.Rds",
+               "SRS606782_CG_bsseq_obj.Rds",
+               "SRS606783_CG_bsseq_obj.Rds",
+               "SRS606784_CG_bsseq_obj.Rds",
+               "SRS606785_CG_bsseq_obj.Rds")
+
+obj_files <- str_c("/home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/processed_data/bsseq_objects/bsobj_CG/", obj_files)
+#obj_files <- str_c("~/Datasets/human_data/bsobj_CG/", obj_files)
+
+
+# Read a Bs_seq boject from .Rds file
+
+read_bs_obj <- function(rds_path){
+        bs_obj <- readRDS(file = rds_path)
+        bs_obj <- strandCollapse(bs_obj)
+        return(bs_obj)
+}
+#--------Call DMRs
+
+# Load the data
+obj_list <- lapply(X = obj_files, read_bs_obj)
+obj_list <- bsseq::combineList(x = obj_list)
+
+pData(obj_list)$CellType <- factor(c(rep("ESC", times=2), rep("iPSC", times=4)))
+pData(obj_list)$Replicate <- c(1:2,1:4)
+
+# Remove CpG with no coverage
+loci.idx <- which(DelayedMatrixStats::rowSums2(getCoverage(obj_list, type="Cov")==0) == 0)
+obj_list <- obj_list[loci.idx, ]
+
+# Save object for easy retreval
+saveRDS(object = obj_list,
+        file = "/home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/processed_data/dmrseq_dmrs/Mitalipov_BSseq_obj.rds")
+
+BiocParallel::register(BiocParallel::SerialParam())
+mitalipov_dmrs <- dmrseq(obj_list, testCovariate = "CellType",
+                       bpSpan = 500,
+                       maxGap = 500,
+                       maxPerms = 10,
+                       chrsPerChunk = 1)
+
+saveRDS(object = mitalipov_dmrs,
+        file = "/home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/processed_data/dmrseq_dmrs/Mitalipov_dmrs.Rds")
+
+
 ```
 
-How many significant DMRs
-```{r}
-table(dmrs$dmr_granges$qval < 0.1)
-table(dmrs$dmr_granges$qval < 0.05)
+# Calculate mCG/CG delta and SCNT correction
+```{r, cache=TRUE}
+
+gr_dmr <- readRDS("wgbs/dmrs/dmr_out/Mitalipov_dmrs.Rds")
+
+obj_files <- list.files("wgbs/CG_bsobj/", pattern = "SRS6067", full.names = TRUE)
+
+test_fls <- obj_files[basename(obj_files) %in% c("SRS606777_CG_bsseq_obj.Rds",
+               "SRS606778_CG_bsseq_obj.Rds",
+               "SRS606782_CG_bsseq_obj.Rds",
+               "SRS606783_CG_bsseq_obj.Rds",
+               "SRS606784_CG_bsseq_obj.Rds",
+               "SRS606785_CG_bsseq_obj.Rds")]
+
+groups <- c(rep("ESC", times=2), rep("iPSC", times=4))
+
+filter_dmrs <- function(gr_dmr, obj_fls, groups, cores=1){
+        
+        ### Check number of groups = 2
+        stopifnot(length(unique(groups)) == 2)
+        
+        group1 <- unique(groups)[1]
+        group2 <- unique(groups)[2]
+        
+        # Get the DMR sequence and the number of CG positions in DMRs
+        seqs <- getSeq(BSgenome.Hsapiens.UCSC.hg19, gr_dmr)
+        CpG_count <- dinucleotideFrequency(seqs)[ ,"CG"]
+        rm(seqs)
+        
+        # Calculate mCG and CG totals for DMRs
+        
+        mCG_levels <- make_mC_matrix(obj_fls = obj_fls, gr = gr_dmr, cores = cores)
+        mCG_levels <- data.frame(mCG_levels)
+        
+        # Calculate mean delta and variance between groups
+        group1_mean <- apply(mCG_levels[ ,group1 == groups], MARGIN = 1, mean, na.rm=TRUE)
+        group1_sd <- apply(mCG_levels[ ,group1 == groups], MARGIN = 1, sd, na.rm=TRUE)
+        
+        group2_mean <- apply(mCG_levels[ ,group2 == groups], MARGIN = 1, mean, na.rm=TRUE)
+        group2_sd <- apply(mCG_levels[ ,group2 == groups], MARGIN = 1, sd, na.rm=TRUE)
+        
+        mCG_delta <- group1_mean - group2_mean
+        
+        # Check dimensions
+        stopifnot(length(gr_dmr) == nrow(mCG_levels))
+        
+        # Add all data to GRanges
+        dat <- cbind(mCG_delta, CpG_count, data.frame(mCG_levels))
+        
+        # Round the metrics
+        dat <- round(dat, digits = 3)
+        
+        # Add the metadata columns to the gr object
+        mcols(gr_dmr) <- cbind(mcols(gr_dmr), dat)
+        
+        return(gr_dmr)
+}
+
+gr_dmr_annotated <- filter_dmrs(gr_dmr = gr_dmr, obj_fls = test_fls,
+                         groups = groups, cores = 1)
+
+ips_esc_dmrs_heso <- gr_dmr_annotated[(abs(gr_dmr_annotated$mCG_delta) > 0.20) & (gr_dmr_annotated$pval < 0.05)]
+
+# Count overlaps with donor DMRs
+#all_dmrs <- readRDS("methylCseq/processed_data/dmrseq_dmrs/classified_dmrs_granges.Rds")
+
+#table(overlapsAny(ips_esc_dmrs_heso, all_dmrs))
+
 ```
 
-Calculate mCG levels for DMRs
-```{r}
-# List the BSseq object Rds files
-cg_rds_list <- list.files("wgbs/CG_bsobj/", full.names = TRUE)
+Profile DMR correction using the same method as primary donor samples
+```{r, cache=TRUE}
+### Calc mCG/CG in DMRs for all samples
+ips_esc_dmrs_mCG <- make_mC_matrix(obj_fls = obj_files, gr = ips_esc_dmrs_heso, cores = 1)
 
-# List the files used in the DMR calling 
-dmr_rds_list <- dmrs$manifest_data$rds_path
+mcols(ips_esc_dmrs_heso) <- cbind(mcols(ips_esc_dmrs_heso), ips_esc_dmrs_mCG)
 
-# Confirm location of all files locally
-basename(rds_list) %in% basename(cg_rds_list) %>% all() %>% stopifnot()
+colnames(ips_esc_dmrs_mCG)
 
-cg_rds_list <- cg_rds_list[basename(cg_rds_list) %in% basename(rds_list)]
+esc_id <- c("SRS606777", "SRS606778")
+ips_id <- c("SRS606782", "SRS606783", "SRS606784", "SRS606785")
+fib_id <- c("SRS606776")
+scnt_id <- c("SRS606775", "SRS606779", "SRS606780", "SRS606781") 
 
-# Make the mCG matrix
-dmr_mCG <- make_mC_matrix(obj_fls = cg_rds_list,
-                          gr = dmrs$dmr_granges, cores = 2)
+colnames(ips_esc_dmrs_mCG) <- str_remove(string = colnames(ips_esc_dmrs_mCG), 
+                                         pattern = "_CG_bsseq_obj.Rds")
 
+esc_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,ips_id], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+fib_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,ips_id], na.rm = TRUE) - ips_esc_dmrs_mCG[ ,fib_id]
+esc_scnt_delta <- rowMeans(ips_esc_dmrs_mCG[ ,scnt_id], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+
+dmr_delta_df <- data.frame(ESC_delta = esc_ips_delta, Fibroblast_delta = fib_ips_delta)
+dmr_delta_df$dmr <- NA
+
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta > 0.2 & dmr_delta_df$Fibroblast_delta >= 0.2] <- "Aberrant_hypermethylation"
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta < -0.2 & dmr_delta_df$Fibroblast_delta <= -0.2] <- "Aberrant_hypomethylation"
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta < -0.2 & abs(dmr_delta_df$Fibroblast_delta) <= 0.2 ] <- "Memory_hypomethylation"
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta > 0.2 & abs(dmr_delta_df$Fibroblast_delta) <= 0.2 ] <- "Memory_hypermethylation"
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta < -0.2 & dmr_delta_df$Fibroblast_delta >= 0.2] <- "Partial_hypomethylation_memory"
+dmr_delta_df$dmr[dmr_delta_df$ESC_delta > 0.2 & dmr_delta_df$Fibroblast_delta <= -0.2] <- "Partial_hypermethyation_memory"
+dmr_delta_df$dmr <- factor(dmr_delta_df$dmr)
+table(dmr_delta_df$dmr)
+table(dmr_delta_df$Class)
+table(dmr_delta_df$dmr) %>% sum()
+dmr_delta_df$Class <- ifelse(test = dmr_delta_df$ESC_delta < 0, yes = "Hypo", no = "Hyper")
+dmr_delta_df$Class <- factor(dmr_delta_df$Class, levels=c("Hyper", "Hypo"))
+
+all(rownames(dmr_delta_df) == gr_to_loci(ips_esc_dmrs_heso))
+
+ips_esc_dmrs_heso$class <- dmr_delta_df$dmr
+ips_esc_dmrs_heso$direction <- dmr_delta_df$Class
+
+dmr_scatter_gg <- ggplot(data = dmr_delta_df, mapping = aes(x = ESC_delta, y = Fibroblast_delta, colour = Class, fill = Class)) +
+        geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+        geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+        scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+        ylab("Primed iPSC mCG - Fibroblast mCG") +
+        xlab("Primed iPSC mCG - ESC mCG") +
+        scale_colour_manual(values = vitC[c(6,1)]) +
+        #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+        sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+dmr_scatter_gg <- ggExtra::ggMarginal(dmr_scatter_gg, groupColour = TRUE, groupFill=TRUE)
+dmr_scatter_gg
 ```
 
-Inspect DMR delta 
-```{r}
-sample_group <- dmrs$manifest_data$group
 
-ips_means <- rowMeans(dmr_mCG[ ,sample_group == "iPSC"])
-esc_means <- rowMeans(dmr_mCG[ ,sample_group == "ESC"])
+Plot the correction of the SCNT cells as histograms
+```{r, cache=TRUE}
 
-dmr_delta <- ips_means - esc_means
+esc_id <- c("SRS606777", "SRS606778")
+sendai_id <- c("SRS606782", "SRS606783")
+retro_id <- c("SRS606784", "SRS606785")
+fib_id <- c("SRS606776")
+scnt_id <- c("SRS606775", "SRS606779", "SRS606780", "SRS606781") 
 
-hist(dmr_delta)
+sendai_delta <- rowMeans(ips_esc_dmrs_mCG[ ,sendai_id], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+retro_delta <- rowMeans(ips_esc_dmrs_mCG[ ,retro_id], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+scnt_delta <- rowMeans(ips_esc_dmrs_mCG[ ,scnt_id], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+
+fib_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,c(sendai_id, retro_id)], na.rm = TRUE) - ips_esc_dmrs_mCG[ ,fib_id]
+esc_ips_delta <- rowMeans(ips_esc_dmrs_mCG[ ,c(sendai_id, retro_id)], na.rm = TRUE) - rowMeans(ips_esc_dmrs_mCG[ ,esc_id], na.rm = TRUE)
+
+dmr_delta_df <- data.frame(ESC_delta = esc_ips_delta, Fibroblast_delta = fib_ips_delta, SCNT_delta = scnt_delta)
+dmr_delta_df$Class <- ifelse(test = dmr_delta_df$ESC_delta < 0, yes = "Hypo", no = "Hyper")
+
+ipsc_scatter <- ggplot(data = dmr_delta_df, mapping = aes(x = ESC_delta, y = Fibroblast_delta, colour = Class, fill = Class)) +
+        geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+        geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+        scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+        ylab("Primed iPSC mCG - Fibroblast mCG") +
+        xlab("Primed iPSC mCG - ESC mCG") +
+        scale_colour_manual(values = vitC[c(6,1)]) +
+        #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+        sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+ipsc_scatter_gg <- ggExtra::ggMarginal(ipsc_scatter, groupColour = TRUE, groupFill=TRUE)
+
+scnt_scatter <- ggplot(data = dmr_delta_df, mapping = aes(x = SCNT_delta, y = Fibroblast_delta, colour = Class, fill = Class)) +
+        geom_vline(xintercept = c(-.2, .2), alpha=0.5) + geom_hline(yintercept = c(-.2, .2), alpha=0.5) +
+        geom_point(alpha=0.1, inherit.aes = TRUE, size=1) +
+        scale_x_continuous(limits = c(-1, 1), expand = c(0,0)) + scale_y_continuous(limits = c(-1, 1), expand = c(0,0)) +
+        ylab("Primed iPSC mCG - Fibroblast mCG") +
+        xlab("SCNT mCG - ESC mCG") +
+        scale_colour_manual(values = vitC[c(6,1)]) +
+        #scale_colour_manual(values = brewer.pal(n = 2, name = "Dark2")) +
+        sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+scnt_scatter_gg <- ggExtra::ggMarginal(scnt_scatter, groupColour = TRUE, groupFill=TRUE)
+
+
+delta_df <- data.frame(sendai_iPSC=sendai_delta,
+                      retro_iPSC=retro_delta,
+                      SCNT_iPSC=scnt_delta)
+
+delta_df_melt <- reshape2::melt(delta_df)
+
+line_mm <- 0.5 / 2.835
+
+gg_delta_correct <- ggplot(delta_df_melt,
+                           aes(x = value, group=variable,
+                               color=variable,
+                               fill=variable, alpha=0.9)) +
+        geom_histogram(bins = 30, position="identity") +
+        geom_vline(xintercept = c(-.2, .2), linetype='dashed', size = line_mm) +
+        #geom_density() +
+        #scale_color_manual(values=c(reprog_pal[1:2], vitC[c(2,2)])) +
+        #scale_fill_manual(values=c(reprog_pal[1:2], vitC[c(2,2)])) +
+        facet_grid(.~variable, scales = "free_y") +
+        scale_x_continuous(limits = c(-1, 1)) +
+        xlab("DMR mCG delta \n(iPSC mCG - ESC mCG)") +
+        ylab("Number of DMRs") +
+        sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+gg_delta_correct
 ```
 
-Filter DMRs based on delta and fdr
 ```{r}
+pdf("wgbs/plots/ma_cell_line_dmr_correction_plots.pdf", width = 7, height = 2)
+plot_grid(ipsc_scatter_gg, scnt_scatter_gg, gg_delta_correct, ncol = 3, nrow = 1,
+          rel_widths = c(0.75, 0.75, 1.1))
+dev.off()
 
-dmr_mCG_filt <- dmr_mCG[abs(dmr_delta) > 0.2 & dmrs$dmr_granges$qval < 0.1, ]
-dim(dmr_mCG_filt)
-```
-```{r}
-pheatmap(dmr_mCG_filt, show_rownames = FALSE)
-```
+png("wgbs/plots/ma_cell_line_dmr_correction_plots.png", width = 7, height = 2, units = "in", res = 300)
+plot_grid(ipsc_scatter_gg, scnt_scatter_gg, gg_delta_correct, ncol = 3, nrow = 1,
+          rel_widths = c(0.75, 0.75, 1.1))
+dev.off()
 
-
-How many DMRs overlap 32F/38F DMRs?
-```{r}
-all_dmr <- readRDS("wgbs/processed_data/all_dmrs_annotated_granges.Rds")
-
-table(overlapsAny(all_dmr, dmrs$dmr_granges[dmrs$dmr_granges$qval < 0.1]))
+plot_grid(ipsc_scatter_gg, scnt_scatter_gg, gg_delta_correct, ncol = 3, nrow = 1,
+          rel_widths = c(0.75, 0.75, 1.1))
 ```
 
-How many overlap CH-DMRs
-```{r}
-ch_dmr <- bed_to_gr("resources/nature13551-s3.bed")
 
-table(overlapsAny(all_dmr, ch_dmr))
-table(overlapsAny(dmrs$dmr_granges[dmrs$dmr_granges$qval < 0.1], ch_dmr))
+Barplot of correction with respect to CH-DMRs
+```{r, cache=TRUE}
+delta_df_melt$delta_pass <- abs(delta_df_melt$value) < 0.2
+
+dmr_rate <- delta_df_melt %>% dplyr::group_by(variable, delta_pass) %>% dplyr::count()
+
+gg_bar <- ggplot(dmr_rate[dmr_rate$variable == "SCNT_iPSC", ],
+                 aes(x = variable, y = n, fill=delta_pass)) + 
+    geom_bar(stat = 'identity') +
+        sams_pub_theme()
+
+pdf("wgbs/plots/ma_scnt_dmr_correction_fraction_barplot.pdf", width = 1, height = 2)
+gg_bar
+dev.off()
+
+gg_bar
 ```
+
+Export source data for manuscript
+```{r, cache=TRUE}
+wb_ed_fig_3ghi <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig_3ghi, sheetName = "ED_Fig_3g")
+openxlsx::writeData(wb = wb_ed_fig_3ghi, sheet = "ED_Fig_3g",
+                    x = gg_bar$data)
+
+openxlsx::addWorksheet(wb_ed_fig_3ghi, sheetName = "ED_Fig_3h")
+openxlsx::writeData(wb = wb_ed_fig_3ghi, sheet = "ED_Fig_3h",
+                    x = rbind(ipsc_scatter$data, scnt_scatter$data))
+
+openxlsx::addWorksheet(wb_ed_fig_3ghi, sheetName = "ED_Fig_3i")
+openxlsx::writeData(wb = wb_ed_fig_3ghi, sheet = "ED_Fig_3i",
+                    x = gg_delta_correct$data)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig_3ghi,
+                       file = "ED_Figure_3ghi_source_data.xlsx",
+                       overwrite = TRUE)
+```
+
+```{r}
+sessionInfo()
+```
+
