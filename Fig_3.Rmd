@@ -1725,14 +1725,24 @@ openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3p",
                     x = gg_nsc_mch_dmr$data)
 ```
 
-
-
-
 Close out source data files
 ```{r, cache=TRUE}
 openxlsx::saveWorkbook(wb = wb_fig3,
                        file = "Figure_3_source_data.xlsx", overwrite = TRUE)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig3,
+                       file = "ED_Figure_3cdef_source_data.xlsx",
+                       overwrite = TRUE)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig4,
+                       file = "ED_Figure_4abcde_source_data.xlsx",
+                       overwrite = TRUE)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig6,
+                       file = "ED_Figure_6a_source_data.xlsx",
+                       overwrite = TRUE)
 ```
+
 
 Session info
 ```{r}
