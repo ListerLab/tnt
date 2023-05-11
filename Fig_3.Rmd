@@ -1725,8 +1725,222 @@ openxlsx::writeData(wb = wb_fig3, sheet = "Fig_3p",
                     x = gg_nsc_mch_dmr$data)
 ```
 
-Close out source data files
+
+Per-read methylation values for ICR in Extended data Fig 6b
 ```{r, cache=TRUE}
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+
+icr_gr <- readRDS("resources/imprint_control_regions_granges_hg19.Rds")
+mcols(icr_gr) <- icr_gr$Categoly
+
+
+per_read_list <- list.files("wgbs/ICR_per_read_data/",
+                             pattern = "_per_read_ICR_mC_calls.txt", full.names = TRUE)
+
+process_per_read <- function(per_read_file){
+        dat <- read.table(per_read_file, colClasses = c("character", "numeric", "character", "character"))
+        dat$read_length <- nchar(dat$V4)
+        
+        count_character <- function(x, char){sum(unlist(strsplit(dat$V4[x], "")) == char)}
+        
+        dat$mCG_count <- lapply(1:nrow(dat), count_character, char = "X") %>% unlist()
+        dat$CG_count <- lapply(1:nrow(dat), count_character, char = "x") %>% unlist()
+        
+        # remove rows with all 0
+        dat <- dat[rowSums(dat[ ,c("mCG_count", "CG_count")]) > 0, ]
+        
+        
+        dat$read_mCG <- dat$mCG_count / (dat$mCG_count + dat$CG_count)
+        dat$file <- basename(per_read_file) %>% str_remove("_per_read_ICR_mC_calls.txt")
+        return(dat)
+}
+
+per_read_mat <- lapply(per_read_list, process_per_read) %>% do.call(rbind, .)
+
+per_read_mat$read_mCG <- as.numeric(per_read_mat$read_mCG)
+per_read_mat$read_class <- "Discordant"
+per_read_mat$read_class[per_read_mat$read_mCG == 1] <- "Methylated"
+per_read_mat$read_class[per_read_mat$read_mCG == 0] <- "Unmethylated"
+
+per_read_gr <- GRanges(seqnames = per_read_mat$V1, ranges = IRanges(per_read_mat$V2, per_read_mat$V2 + per_read_mat$read_length))
+
+mcols(per_read_gr) <- per_read_mat
+
+icr_olaps <- findOverlaps(per_read_gr, icr_gr, type = 'within')
+
+per_read_gr <- per_read_gr[icr_olaps@from]
+
+mcols(per_read_gr) <- cbind(mcols(per_read_gr), mcols(icr_gr)[icr_olaps@to, ])
+
+per_read_mat <- as.data.frame(per_read_gr)
+colnames(per_read_mat)[16] <- "Category"
+
+per_read_mat$Category[grepl("Secondary", per_read_mat$Categoly)] <- "Secondary DMR"
+
+per_read_mat$file <- str_c(per_read_mat$file, ".bam")
+
+bam_ind <- match(per_read_mat$file, basename(mdat$BAM))
+
+per_read_mat$Group <- mdat$Group[bam_ind]
+per_read_mat$Short_name <- mdat$Manuscript.Name[bam_ind]
+per_read_mat$Short_name <- factor(per_read_mat$Short_name)
+
+per_read_mat$State <- mdat$State[bam_ind]
+per_read_mat$State <- factor(per_read_mat$State, levels= c("Early", "Naive", "Primed", "TNT", "NtP", "ESC"))
+
+per_read_mat_counts <- per_read_mat %>% dplyr::group_by(Short_name, read_class, Category, State) %>% dplyr::tally()
+
+# Remove groups that didn't end up in paper
+per_read_mat_counts <- per_read_mat_counts[!grepl(pattern = "Placenta", per_read_mat_counts$Category), ]
+per_read_mat_counts <- per_read_mat_counts[per_read_mat_counts$State != "ESC", ]
+
+gg_icr_per_read <- ggplot(data = per_read_mat_counts[!grepl(pattern = "Placenta", per_read_mat_counts$Category), ],
+             aes(x = Short_name, y = n, fill = read_class)) + 
+        geom_bar(position = "fill", stat = "identity") +
+        facet_grid(Category~State, scales = 'free', space = 'free', drop = TRUE) +
+        theme_linedraw() +
+        scale_y_continuous(expand = c(0,0)) + 
+        xlab(label = "") + 
+        ylab(label = "Proportion of WGBS reads in ICRs") +
+        theme_bw() +
+        theme(
+                plot.background = element_blank()
+                ,panel.grid.major = element_blank()
+                ,panel.grid.minor = element_blank()
+                ,panel.border = element_blank(),
+                axis.text = element_text(colour = "black"),
+                axis.line = element_line(color = 'black'),
+                axis.text.x = element_text(angle = 90, size=8,
+                                           hjust = 1, vjust = 0.5)
+        ) +
+        # Edit legend
+        scale_fill_manual(values = vitC[c(1,3,5)], name="Read class") + sams_pub_theme(legend_pos = "right")
+
+pdf("wgbs/plots/ICR_per_read_mCG_proportion_bar_plots.pdf", width = 6, height = 4)
+gg_icr_per_read
+dev.off()
+
+gg_icr_per_read
+```
+
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "Fig_6b")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "Fig_6b",
+                    x = gg_icr_per_read$data)
+```
+
+X-chromosome analysis. Extended Data Figure 6c-d
+```{r, eval=FALSE}
+### Bin chrX and profile mCG -------------------
+
+
+### Make the bins
+## Calculate window mCA/CA for DMR testing
+gr_genome <- GRanges(seqinfo(BSgenome.Hsapiens.UCSC.hg19))
+gr_chrX <- gr_genome[seqnames(gr_genome) == "chrX"]
+
+#chrX_windows <- slidingWindows(x = gr_chrX, width = 5000, step = 1000)
+chrX_windows <- tile(x = gr_chrX, width = 5000)
+chrX_windows <- unlist(chrX_windows)
+
+chrX_ids <- c("SRS114877", "RL1124", "RL1125", "RL1751_1771", "RL1752_1772", "RL412",
+         "RL415", "RL417", "RL418", "RL702", "RL703", "RL837", "RL838", "RL936",
+         "RL937", "SRS606777")
+
+chrX_matrix <- make_mC_matrix(obj_fls = mdat[mdat$Library_id %in% chrX_ids],
+                              gr = chrX_windows, cores = 3)
+
+saveRDS(chrX_matrix, "wgbs/processed_data/chrX_5kb_bin_mCG.Rds")
+```
+
+
+```{r, cache=TRUE}
+chrX_matrix <- readRDS("wgbs/processed_data/chrX_5kb_bin_mCG.Rds")
+
+ind <- match(colnames(chrX_matrix), mdat$Library_id)
+
+colnames(chrX_matrix) <- mdat$Library_id[ind]
+
+head(chrX_matrix)
+chrX_matrix_cc <- chrX_matrix[complete.cases(chrX_matrix), ]
+
+### plot the correlation heatmap
+## Plot the correlation heatmap
+cormat <- round(cor(chrX_matrix_cc, method='pearson'),5)
+head(cormat)
+library(reshape2)
+melted_cormat <- melt(cormat)
+head(melted_cormat)
+
+annot_dat <- mdat[ind ,c("State", "Media")] %>% data.frame()
+rownames(annot_dat) <- mdat$Manuscript.Name[ind]
+
+colnames(cormat) <- mdat$Manuscript.Name[ind]
+rownames(cormat) <- mdat$Manuscript.Name[ind]
+
+pdf("wgbs/plots/chrX_5kb_bin_mCG_correlation_heatmap.pdf", width = 8, height = 6)
+pheatmap(mat = cormat, annotation_col = annot_dat, border_color = NA)
+dev.off()
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "ED_Fig_6c")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6c",
+                    x = cormat)
+```
+
+
+
+```{r, cache=TRUE}
+## Promoter analysis
+
+# Load object generated for figure 1 promoter analysis
+pro_mCG <- readRDS("wgbs/processed_data/promoter_mCG.Rds")
+pro_mCG <- pro_mCG[!duplicated(pro_mCG), ]
+
+pro_mCG <- pro_mCG[ ,colnames(pro_mCG) %in% mdat$Library_id[ind]]
+
+table(complete.cases(pro_mCG))
+pro_mCG <- pro_mCG[complete.cases(pro_mCG), ]
+
+pro_mCG_gr <- GRanges(seqnames = rownames(pro_mCG))
+chrX_hit <- as.character(seqnames(pro_mCG_gr)) == "chrX" 
+pro_mCG_gr <- pro_mCG_gr[chrX_hit]
+pro_mCG <- pro_mCG[chrX_hit, ]
+
+chrX_cgi_gr <- bed_to_gr("resources/chrX_CG_islands.bed")
+pro_mCG_gr$CGI <- overlapsAny(pro_mCG_gr, chrX_cgi_gr)
+
+ind_pro <- match(colnames(pro_mCG), mdat$Library_id)
+colnames(pro_mCG) <- mdat$Manuscript.Name[ind_pro]
+
+pdf("wgbs/plots/chrX_promoter_mCG_heatmaps.pdf", height = 5, width = 5)
+pheatmap(pro_mCG[pro_mCG_gr$CGI, ], cluster_rows = TRUE, show_rownames = FALSE,
+         main = "chrX CGI promoter mCG/CG",
+         #labels_col = labs,
+         clustering_distance_cols = 'correlation',
+         clustering_distance_rows = 'correlation')
+
+pheatmap(pro_mCG[pro_mCG_gr$CGI == FALSE, ], cluster_rows = TRUE, show_rownames = FALSE,
+         main = "chrX Non-CGI promoter mCG/CG",
+         #annotation_col = annot_dat,
+         #labels_col = labs,
+         clustering_distance_cols = 'correlation', clustering_distance_rows = 'correlation')
+dev.off()
+
+chrX_pro_source_dat <- cbind(pro_mCG, data.frame(CGI=pro_mCG_gr$CGI))
+
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "ED_Fig_6d")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6d",
+                    x = chrX_pro_source_dat)
+```
+
+Close out source data files
+```{r}
 openxlsx::saveWorkbook(wb = wb_fig3,
                        file = "Figure_3_source_data.xlsx", overwrite = TRUE)
 
@@ -1739,7 +1953,7 @@ openxlsx::saveWorkbook(wb = wb_ed_fig4,
                        overwrite = TRUE)
 
 openxlsx::saveWorkbook(wb = wb_ed_fig6,
-                       file = "ED_Figure_6a_source_data.xlsx",
+                       file = "ED_Figure_6abcd_source_data.xlsx",
                        overwrite = TRUE)
 ```
 
