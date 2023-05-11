@@ -1,0 +1,1458 @@
+---
+title: "Figure 4 and associated extended data figures"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+source("R/project_functions.R")
+```
+
+## PCA Plots of all omics assays
+
+```{r, cache=TRUE}
+########################
+# PCA plots ---------------------------------------------------------------
+########################
+mat = dat_norm$E[!is_te, ]
+mdat = mdat_rna
+
+plot_pca_2 <- function(mat, mdat, scale=FALSE){
+    
+    # Remove incomplete cases
+    mat <- mat[complete.cases(mat), ]
+    
+    # Transpose
+    mat <- t(mat)
+    
+    # Remove low variance features
+    lowVar <- nearZeroVar(mat, saveMetrics = TRUE)
+    message(str_c("Low variance features removed = ", sum(lowVar$nzv)))
+    mat <- mat[ ,!lowVar$nzv]
+    
+    # Calculate PC's
+    pr <- prcomp(x = mat, scale.=scale)
+    pc1 <- (summary(pr)$importance[2, 1] * 100) %>% round(digits = 1)
+    pc2 <- (summary(pr)$importance[2, 2] * 100) %>% round(digits = 1)
+    #pc3 <- (summary(pr)$importance[2, 3] * 100) %>% round(digits = 2)
+    
+    pc1_dat <- pr$x[ ,1]
+    pc2_dat <- pr$x[ ,2]
+    #pc3_dat <- pr$x[ ,3]
+    samples <- rownames(pr$x)
+    
+    pca_df <- data.frame(Sample=samples, PC1=pc1_dat, PC2=pc2_dat)
+    
+    ind <- match(pca_df$Sample, mdat$Manuscript.Name)
+    pca_df$group <- factor(mdat$State[ind], levels=c("ESC", "Primed", "TNT", "NtP"))
+    
+    gg_pca <-  ggplot(data = pca_df,
+                      mapping = aes(x = PC2, y = PC1, label=Sample,
+                                    fill=group, colour=group)) +
+        geom_point(alpha=0.8, size=2) +
+        theme_linedraw() +
+        theme(panel.grid = element_line(colour = 'grey')) +
+        scale_color_manual(values = reprog_pal2) +
+        geom_text_repel(data = subset(pca_df, samples %in% samples),
+                        point.padding = unit(1, "lines"), size=3) +
+        xlab(str_c("PC2 (", pc2, "%)")) +
+        ylab(str_c("PC1 (", pc1, "%)"))
+    gg_pca
+}
+```
+
+CG methylation PCA
+```{r, cache=TRUE}
+# DNA methylation ---------------------------------------------------------
+
+### Load the meta-data
+mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_metadata_local.csv")
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$Background == "MEL1", ]
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$Library_id != "RL2352_merge", ]
+
+mdat_wgbs$CG_bsobj_local <- str_c("wgbs/CG_bsobj/", basename(mdat_wgbs$BSseq_CG))
+lapply(mdat_wgbs$CG_bsobj_local, file.exists)
+
+
+# Cluster by regulatory element mCG
+enh_dat <- read.table(file = "resources/hg19_USCS_geneHancerClusteredInteractionsDoubleElite.txt")
+enh_gr <- GRanges(seqnames = enh_dat$V9, ranges = IRanges(start = enh_dat$V10,
+                                                          end = enh_dat$V11))
+
+summary(width(enh_gr))
+enh_gr <- enh_gr[width(enh_gr) >= 25]
+
+enh_mcg <- make_mC_matrix(obj_fls = mdat_wgbs$BSseq_CG[mdat_wgbs$Media == "E8"],
+                                                     gr = enh_gr, cores = 3)
+
+colnames(enh_mcg) <- mdat_wgbs$Manuscript.Name[mdat_wgbs$Media == "E8"]
+
+enh_cg_pca <- plot_pca_2(mat = enh_mcg, mdat = mdat_wgbs, scale = FALSE)
+enh_cg_pca <- enh_cg_pca + ggtitle("", subtitle = "mCG: regulatory elements")
+enh_cg_pca
+```
+
+```{r}
+wb_fig5 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_mCG")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_mCG",
+                    x = enh_cg_pca$data)
+
+```
+
+CH methylation PCA
+```{r, cache=TRUE}
+################################################
+### PCA plot of mCA (Run on server) 
+# source activate mypython3
+# R
+# 
+# library(bsseq)
+# library(BSgenome.Hsapiens.UCSC.hg19)
+# library(magrittr)
+# library(stringr)
+# 
+# mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_paths_peb_servers.csv")
+# mdat_wgbs <- mdat_wgbs[mdat_wgbs$donor == "MEL1", ]
+# mdat_wgbs <- mdat_wgbs[mdat_wgbs$media == "E8", ]
+# lapply(mdat_wgbs$CA_bsobj, file.exists)
+# 
+# tile_50kb <- tileGenome(seqlengths = seqinfo(BSgenome.Hsapiens.UCSC.hg19),
+#                        tilewidth=50000, cut.last.tile.in.chrom=TRUE)
+# 
+# tile_50kb <- tile_50kb[seqnames(tile_50kb) %in% str_c("chr", c(1:22))]
+# 
+# read_bs_obj <- function(rds_path){
+#     stopifnot(file.exists(rds_path))
+#     message(str_c("Reading ", rds_path))
+#     message(Sys.time())
+#     bs_obj <- readRDS(file = rds_path)
+# 
+#     return(bs_obj)
+# }
+# 
+# 
+# calc_mC_window <- function(rds_path, gr){
+# 
+#     message(str_c("Reading ", rds_path, " ", Sys.time()))
+#     bs_obj <- read_bs_obj(rds_path)
+# 
+#     message("Calculating coverage...")
+#     gr$Cov <- getCoverage(BSseq = bs_obj, regions = gr, type = "Cov",
+#                           what = "perRegionTotal")
+# 
+#     message("Calculating M...")
+#     gr$M <- getCoverage(BSseq = bs_obj, regions = gr, type = "M",
+#                         what = "perRegionTotal")
+# 
+#     message("Calculating methylation percentage...")
+#     gr$pc <- gr$M / gr$Cov
+# 
+#     return(gr)
+# }
+# 
+# # Calculate mC levels (%) for ranges from a list of bs_seq objects. Returns matrix.
+# make_mC_matrix <- function(obj_fls, gr, cores=1){
+# 
+#     grl <- mclapply(X = obj_fls, FUN = calc_mC_window, gr = gr, mc.cores = cores) %>%
+#         GRangesList()
+# 
+#     loci <- str_c(seqnames(grl[[1]]), start(grl[[1]]), sep = ":") %>%
+#         str_c(end(grl[[1]]), sep = "-")
+# 
+#     get_mC <- function(x){
+#         mC <- grl[[x]]$pc %>% c()
+#         return(mC)
+#     }
+# 
+#     message("Making matrix of mC levels for regions...")
+#     dat <- lapply(X = 1:length(grl), FUN = get_mC)
+#     dat <- do.call(cbind, dat)
+#     colnames(dat) <- basename(obj_fls)
+# 
+#     rownames(dat) <- loci
+# 
+#     return(dat)
+# }
+# 
+# mCA_50kb <- make_mC_matrix(mdat_wgbs$CA_bsobj, tile_50kb, cores = 8)
+# 
+# # Calculate mCA non-conversion
+# correct_nc <- function(obj_fl){
+# 
+#     bs_obj <- readRDS(obj_fl)
+# 
+#     nc_obj <- chrSelectBSseq(BSseq = bs_obj, seqnames = "chrL")
+#     nc_cov <- getCoverage(BSseq = nc_obj, type = "Cov",
+#                           what = "perBase")
+#     nc_m <- getCoverage(BSseq = nc_obj, type = "M",
+#                         what = "perBase")
+# 
+#     nc_rate <- sum(nc_m) / sum(nc_cov)
+# 
+#     return(nc_rate)
+# }
+# 
+# nc_rates <- mclapply(mdat_wgbs$CA_bsobj, correct_nc, mc.cores = 8)
+# nc_rates <- unlist(nc_rates)
+# names(nc_rates) <- basename(mdat_wgbs$CA_bsobj)
+# 
+# # Subtract non-conversion from window mCA
+# subtract_nc <- function(id){
+# 
+#     dat <- mCA_50kb[ ,id]
+#     dat <- dat - nc_rates[id]
+#     dat[dat < 0] <- 0
+#     return(dat)
+# }
+# 
+# mCA_50kb_nc_corrected <- lapply(basename(mdat_wgbs$CA_bsobj), subtract_nc)
+# mCA_50kb_nc_corrected <- do.call(cbind, mCA_50kb_nc_corrected)
+# 
+# colnames(mCA_50kb_nc_corrected) <- basename(mdat_wgbs$CA_bsobj)
+# 
+# saveRDS(mCA_50kb_nc_corrected, file = "wgbs/processed_data/MEL1_50kb_tile_mCA.Rds")
+# 
+
+mCA_50kb <- readRDS("wgbs/processed_data/MEL1_50kb_tile_mCA.Rds")
+
+mCA_ind <- match(colnames(mCA_50kb), basename(mdat_wgbs$BSseq_CA))
+
+all(colnames(mCA_50kb) == basename(mdat_wgbs$BSseq_CA)[mCA_ind])
+
+colnames(mCA_50kb) <- mdat_wgbs$Manuscript.Name[mCA_ind]
+
+mCA_50kb <- mCA_50kb[complete.cases(mCA_50kb), ]
+dim(mCA_50kb)
+mCA_50kb <- mCA_50kb[rowSums(mCA_50kb) != 0, ]
+dim(mCA_50kb)
+
+# Normalise to account for global mCA differences between samples
+mCA_50kb_norm <- normalizeBetweenArrays(mCA_50kb, method = "quantile")
+
+mCA_pca <- plot_pca_2(mCA_50kb_norm, mdat_wgbs, scale = FALSE)
+mCA_pca <- mCA_pca + ggtitle(label = "", subtitle = "mCA: 50kb windows")
+
+mCA_pca
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_mCA")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_mCA",
+                    x = mCA_pca$data)
+```
+
+ATAC-seq PCA
+```{r, cache=TRUE}
+# ATAC-seq ----------------------------------------------------------------
+
+# Read ATAC metadata
+mdat_atac <- read.csv("atac/atac_metadata.csv")
+
+# Read ATAC counts matrix
+dat_atac <- read.table("atac/psc_peaks.narrowPeak.counts.txt.gz")
+colnames(dat_atac) <- str_sub(colnames(dat_atac), start = 1, end = 6)
+dat_atac <- dat_atac[ ,colnames(dat_atac) %in% mdat_atac$library]
+
+# Remove chrY data
+dat_atac <- dat_atac[!grepl("chrY", rownames(dat_atac)), ]
+
+ind <- match(mdat_atac$library, colnames(dat_atac))
+dat_atac <- dat_atac[ ,ind]
+
+# Check metadata and data match order
+stopifnot(all(colnames(dat_atac) == mdat_atac$library))
+colnames(dat_atac) <- mdat_atac$Manuscript.Name
+
+
+# Filter and normalise counts matrix
+
+atac_design <- model.matrix(~mdat_atac$State)
+
+# Filter low counts
+atac_keep <- filterByExpr(dat_atac, design = atac_design)
+table(atac_keep)
+dat_atac <- dat_atac[atac_keep, ]
+
+# normalise and split the data by genes and TE's for plotting
+atac_norm <- voom(dat_atac, normalize.method = "quantile")
+
+### PCA plot of ATAC
+atac_pca <- plot_pca_2(mat = atac_norm$E, mdat = mdat_atac, scale = FALSE)
+atac_pca <- atac_pca + ggtitle("", "ATAC-seq")
+
+atac_pca
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_atac")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_atac",
+                    x = atac_pca$data)
+```
+
+RNA-seq PCA
+```{r, cache=TRUE}
+# Load the RNA metadata
+mdat_rna <- fread("RNAseq/polyA_RNAseq_sample_table.csv")
+mdat_rna$model_group <- str_c(mdat_rna$Group, mdat_rna$Donor, sep = "_")
+
+# List the counts tables for all samples
+cnt_files <- list.files(path = "RNAseq/polyA/MEL1_gene_te_counts/",
+                        full.names = TRUE)
+
+# Load the count data
+dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>% 
+    do.call(cbind, .)
+libs <- colnames(dat2) %>% str_sub(start = 1, end = 6)
+colnames(dat2) <- libs
+
+# Match the metadata with the count data
+ind <- match(colnames(dat2), mdat_rna$Library)
+mdat_rna <- mdat_rna[ind, ]
+all(colnames(dat2) == mdat_rna$Library)
+
+
+# Just keep the cells in E8 for this part of the analysis
+dat2 <- dat2[ ,mdat_rna$Media == "E8"]
+mdat_rna <- mdat_rna[mdat_rna$Media == "E8", ]
+all(colnames(dat2) == mdat_rna$Library)
+
+colnames(dat2) <- mdat_rna$Manuscript.Name
+
+design <- model.matrix(~mdat_rna$group)
+
+# Filter low counts
+keep <- filterByExpr(dat2, design = design)
+dat2 <- dat2[keep, ]
+
+# normalise and split the data by genes and TE's for plotting
+dat_norm <- voom(dat2, normalize.method = "quantile")
+is_te <- grepl(pattern = ":", x = rownames(dat2))
+
+mdat_rna$State <- mdat_rna$Group
+```
+
+
+```{r, cache=TRUE}
+### PCA plot of genes
+gene_pca <- plot_pca_2(mat = dat_norm$E[!is_te, ], mdat = mdat_rna, scale = FALSE)
+gene_pca <- gene_pca + ggtitle(label = "", subtitle = "Gene expression")
+gene_pca
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_gene")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_gene",
+                    x = gene_pca$data)
+```
+
+
+```{r, cache=TRUE}
+### PCA plot of TE's
+te_pca <- plot_pca_2(mat = dat_norm$E[is_te, ], mdat = mdat_rna, scale = FALSE)
+te_pca <- te_pca + ggtitle("", "TE expression")
+te_pca
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_te")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_te",
+                    x = te_pca$data)
+```
+
+H3K9me3 ChIP-seq
+```{r, cache=TRUE}
+# ChIP-seq ----------------------------------------------------------------
+
+
+### PCA plot of H3K9me3
+
+mdat_k9 <- read.csv(file = "ChIPseq/H3K9me3_MEL1_chip_metadata.csv")
+
+H3K9me3_10kb <- fread("ChIPseq/processed_data/MEL1_H3K9me3_10kb_bin_counts.txt")
+H3K9me3_10kb <- H3K9me3_10kb[ ,-c(1:3)]
+dim(H3K9me3_10kb)
+colnames(H3K9me3_10kb) <- colnames(H3K9me3_10kb) %>% str_sub(start = 2, end = 7)
+
+#ind <- match(colnames(H3K9me3_10kb), mdat_k9$library)
+stopifnot(all(colnames(H3K9me3_10kb) == mdat_k9$library))
+colnames(H3K9me3_10kb) <- mdat_k9$label
+
+H3K9me3_10kb <- H3K9me3_10kb[complete.cases(H3K9me3_10kb), ]
+
+k9_cpm <- edgeR::cpm(H3K9me3_10kb, log=TRUE)
+#boxplot(k9_cpm)
+
+k9_norm <- normalizeBetweenArrays(k9_cpm, method = "quantile")
+dim(k9_norm)
+
+mdat_k9$State <- mdat_k9$group
+mdat_k9$Manuscript.Name <- mdat_k9$label
+
+k9_pca <- plot_pca_2(k9_norm[ ,-c(1,7)], mdat = mdat_k9, scale = FALSE)
+k9_pca <- k9_pca + ggtitle("", "H3K9me3 ChIP-seq")
+k9_pca
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_k9")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_k9",
+                    x = k9_pca$data)
+```
+
+
+Combine plots for manuscript
+```{r, cache=TRUE}
+# Combine PCA plots of all genomics assays --------------------------------
+
+
+cp <- cowplot::plot_grid(enh_cg_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   mCA_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   gene_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   te_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   atac_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   k9_pca + theme(legend.position = "None") + sams_pub_theme(x.text.angle = 0),
+                   nrow = 3, align = "hv")
+
+pdf("manuscript_figure_plots/all_MEL1_assay_pca.pdf", height = 5, width = 3)
+cp
+dev.off()
+
+```
+
+
+
+## CG DMRs
+```{r}
+### CG-DMR plots
+
+# Read the DMR files and filter
+dmr_fls <- list.files(path = "wgbs/dmrs/MEL1_dmrs/dmr_out", full.names = TRUE)
+
+### Load the meta-data
+mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_paths_peb_servers.csv")
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$donor == "MEL1", ]
+mdat_wgbs$CG_bsobj_local <- str_c("wgbs/CG_bsobj/", basename(mdat_wgbs$CG_bsobj))
+lapply(mdat_wgbs$CG_bsobj_local, file.exists)
+
+read_dmr <- function(dmr_rds){
+    
+    dmr <- readRDS(dmr_rds)
+    dmr_gr <- dmr$dmr_granges
+    dmr_gr$contrast <- unique(dmr$manifest_data$group) %>% paste(collapse = "_vs_") 
+    
+    # drop chrY dmrs
+    dmr_gr <- dmr_gr[!seqnames(dmr_gr) %in% "chrY"]
+    
+    groups <- unique(dmr$manifest_data$group)
+    g1_libs <- dmr$manifest_data$id[dmr$manifest_data$group %in% groups[1]]
+    g2_libs <- dmr$manifest_data$id[dmr$manifest_data$group %in% groups[2]]
+    
+    g1_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local[mdat_wgbs$library %in% g1_libs], 
+                             gr=dmr_gr)
+    g2_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local[mdat_wgbs$library %in% g2_libs], 
+                             gr=dmr_gr)
+    delta_mCG <- rowMeans(g2_mCG)  - rowMeans(g1_mCG)
+    
+    dmr_gr$delta <- delta_mCG
+    
+    return(dmr_gr)
+}
+
+dmr_grl <- lapply(dmr_fls, read_dmr)
+names(dmr_grl) <- basename(dmr_fls) %>% str_remove(pattern = "_dmrseq_dmrs.Rds")
+
+filter_dmr <- function(x, fdr=0.05, delta=0.2){
+    
+    dmr_gr <- dmr_grl[[x]]
+    dmr_gr <- dmr_gr[(dmr_gr$qval < delta) & 
+                         (abs(dmr_gr$delta) >= delta)]
+    return(dmr_gr)
+}
+
+dmr_filt <- lapply(1:3, filter_dmr)
+
+# Get DMR counts for hyper and hypo methylation for each comparison to ESCs
+get_dmr_counts <- function(x){
+    dmr_gr <- dmr_filt[[x]]
+    contrast <- unique(dmr_gr$contrast) %>% str_remove("esc_vs_")
+    up_count <- length(dmr_gr[dmr_gr$delta > 0])
+    down_count <- length(dmr_gr[dmr_gr$delta < 0])
+    df <- data.frame(group=contrast, hyper_dmr=up_count, hypo_dmr=down_count)
+    return(df)
+}
+
+dmr_df <- lapply(1:3, get_dmr_counts) %>% do.call(rbind, .)
+
+dmr_df$group[dmr_df$group == "primed"] <- "Primed"
+dmr_df$group[dmr_df$group == "tnt"] <- "TNT"
+dmr_df$group[dmr_df$group == "ntp"] <- "NtP"
+
+dmr_df$group <- factor(dmr_df$group, levels=c("Primed", "TNT", "NtP"))
+dmr_df <- reshape2::melt(dmr_df)
+
+gg_dmr <- ggplot(dmr_df, aes(x = group, y = value, fill=group)) +
+    geom_col() +
+    facet_grid(.~variable) +
+    scale_fill_manual(values = reprog_pal2) +
+    ylab("DMR count") + 
+    sams_pub_theme()
+```
+
+Write filtered DMRs to xlsx for supplementary data tables.
+```{r}
+library(openxlsx)
+
+dmr_df_list <- lapply(dmr_filt, as.data.frame)
+
+write.xlsx(x = dmr_df_list, file = "supplementary_tables/MEL1_CG_DMR_results.xlsx",
+           append=TRUE, row.names=FALSE, sheetName=names(dmr_grl))
+```
+
+
+
+Get the DMRs for enrichment testing
+```{r}
+dmr_primed <- dmr_filt[[2]]
+dmr_tnt <- dmr_filt[[3]]
+
+dmr_primed_up <- dmr_primed[dmr_primed$delta > 0]
+dmr_primed_up_corrected <- dmr_primed_up[!overlapsAny(dmr_primed_up, dmr_tnt)]
+
+dmr_primed_down <- dmr_primed[dmr_primed$delta < 0]
+dmr_primed_down_corrected <- dmr_primed_down[!overlapsAny(dmr_primed_down, dmr_tnt)]
+```
+
+Write the bed files
+```{r}
+gr_to_bed(gr = dmr_primed_up,
+          out_path = "wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed")
+
+gr_to_bed(gr = dmr_primed_up_corrected,
+          out_path = "wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_corrected.bed")
+
+gr_to_bed(gr = dmr_primed_down,
+          out_path = "wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_all.bed")
+
+gr_to_bed(gr = dmr_primed_down_corrected,
+          out_path = "wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_corrected.bed")
+
+```
+
+
+### ATAC peaks
+
+```{r}
+
+atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
+atac_tt <- atac_tt[atac_tt$significant == TRUE, ]
+
+atac_df <- data.frame(group=atac_tt$contrast, direction=atac_tt$direction)
+atac_df <- atac_df %>%  dplyr::group_by(group, direction) %>% dplyr::tally()
+
+atac_df$group <- str_remove(atac_df$group, "group")
+atac_df$group <- factor(atac_df$group, levels=c("Primed", "TNT", "NtP"))
+atac_df$direction <- factor(atac_df$direction, levels=c("Up", "Down"))
+
+gg_atac <- ggplot(atac_df, aes(x = group, y = n, fill=group)) +
+    geom_col() +
+    facet_grid(.~direction) +
+    ylab("Differential ATAC peaks") + 
+    scale_fill_manual(values = reprog_pal2) +
+    sams_pub_theme()
+```
+
+Write the bed files
+```{r}
+atac_up <- atac_tt$loci[atac_tt$significant == TRUE &
+                     atac_tt$contrast == "groupPrimed" &
+                     atac_tt$direction == "Up"]
+
+atac_up_gr <- GenomicRanges::GRanges(atac_up)
+
+atac_down <- atac_tt$loci[atac_tt$significant == TRUE &
+                     atac_tt$contrast == "groupPrimed" &
+                     atac_tt$direction == "Down"]
+
+atac_down_gr <- GenomicRanges::GRanges(atac_down)
+
+gr_to_bed(gr = atac_up_gr,
+          out_path = "atac/all_differential_peaks_primed_up.bed")
+
+gr_to_bed(gr = atac_down_gr,
+          out_path = "atac/all_differential_peaks_primed_down.bed")
+
+```
+
+
+
+### Gene expression
+```{r}
+txdb <- makeTxDbFromGFF(file = "resources/genes.gtf.gz", format = "gtf")
+genes_gr <- genes(txdb) 
+genes_chrY <- genes_gr[seqnames(genes_gr) == "chrY"]
+chrY_genes <- genes_chrY$gene_id
+
+
+get_gene_de <- function(contrast){
+    
+    de <- readxl::read_xlsx("RNAseq/processed_data/MEL1_differential_expression_results.xlsx",
+                        sheet = contrast) %>% 
+        data.frame()
+    
+    de$contrast <- contrast %>% str_remove("ESC_vs_")
+    
+    # remove the aggregagte TE id's
+    de <- de[!grepl(":",de$...1), ]
+    
+    de <- de[!de$gene_id %in% chrY_genes, ]
+    
+    de$direction <- ifelse(de$logFC > 0, yes = "Down", no = "Up")
+    de$significant <- (abs(de$logFC) > 1) & (de$FDR < 0.05) & (de$logCPM > 0)
+    
+    return(de)
+}
+
+cont_list <- c("ESC_vs_Primed", "ESC_vs_TNT", "ESC_vs_N2P")
+gene_df <- lapply(cont_list, get_gene_de) %>% do.call(rbind, .)
+head(gene_df)
+
+gene_df_sig <- gene_df[gene_df$significant == TRUE, c("contrast", "direction")] %>%
+    dplyr::group_by(contrast, direction) %>% dplyr::tally()
+
+gene_df_sig$contrast[gene_df_sig$contrast == "N2P"] <- "NtP"
+gene_df_sig$contrast <- factor(gene_df_sig$contrast, levels=c("Primed", "TNT", "NtP"))
+gene_df_sig$direction <- factor(gene_df_sig$direction, levels=c("Up", "Down"))
+
+gg_gene <- ggplot(gene_df_sig, aes(x = contrast, y = n, fill=contrast)) +
+    geom_col() +
+    facet_grid(.~direction) +
+    scale_fill_manual(values = reprog_pal2) +
+    ylab("Differential genes") + 
+    sams_pub_theme()
+
+gg_gene
+
+```
+
+Make bed files
+```{r}
+gene_down <- gene_df$gene_id[gene_df$contrast == "Primed" &
+                                 gene_df$significant == TRUE &
+                                 gene_df$direction == "Down"]
+
+gene_up <- gene_df$gene_id[gene_df$contrast == "Primed" &
+                                 gene_df$significant == TRUE &
+                                 gene_df$direction == "Up"]
+
+gene_down_gr <- gene_gr[gene_gr$gene_id %in% gene_down] %>%
+    resize(width = 2000, fix = "start")
+
+gene_up_gr <- gene_gr[gene_gr$gene_id %in% gene_up] %>%
+    resize(width = 2000, fix = "start")
+
+gr_to_bed(gene_up_gr, "RNAseq/processed_data/MEL1_primed_up_genes.bed")
+gr_to_bed(gene_down_gr, "RNAseq/processed_data/MEL1_primed_down_genes.bed")
+```
+
+
+### TE expression
+```{r}
+# Get the TE data, select for corrected and uncorrected TE's and make bed files for enrichment tests
+te_de_dat <- read.table(file = "RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
+te_de_dat <- te_de_dat[te_de_dat$significant == "Significant", ]
+te_de_dat$Direction <- ifelse(te_de_dat$logFC > 0, yes = "Down", no = "Up")
+
+te_df <- te_de_dat[ ,c("contrast", "Direction")] %>% dplyr::group_by(contrast, Direction) %>% dplyr::tally()
+
+te_df$contrast <- str_remove(te_df$contrast, "ESC_vs_")
+te_df <- te_df[te_df$contrast %in% c("Primed", "TNT", "N2P"), ]
+te_df$contrast[te_df$contrast == "N2P"] <- "NtP"
+te_df$contrast <- factor(te_df$contrast, levels=c("Primed", "TNT", "NtP"))
+te_df$Direction <- factor(te_df$Direction, levels=c("Up", "Down"))
+
+#pca_df$group <- factor(mdat$group[ind], levels=c("ESC", "Primed", "TNT", "NtP"))
+
+gg_te <- ggplot(te_df, aes(x = contrast, y = n, fill=contrast)) +
+    geom_col() +
+    scale_fill_manual(values = reprog_pal2) +
+    scale_colour_manual("grey") +
+    facet_grid(.~Direction) +
+    ylab("Differential TE's") + 
+    sams_pub_theme()
+
+```
+
+
+```{r}
+# Get the TE data, select for corrected and uncorrected TE's and make bed files for enrichment tests
+
+te_tnt_gr <- te_de_dat[te_de_dat$significant == "Significant" &
+                           te_de_dat$contrast == "ESC_vs_TNT", 1:3] %>% GRanges()
+
+te_primed_up_gr <- te_de_dat[te_de_dat$significant == "Significant" &
+                                 te_de_dat$Direction == "Up" &
+                              te_de_dat$contrast == "ESC_vs_Primed", 1:3] %>% GRanges()
+
+gr_to_bed(te_primed_up_gr, out_path = "RNAseq/processed_data/MEL1_primed_up_te.bed")
+
+te_primed_down_gr <- te_de_dat[te_de_dat$significant == "Significant" &
+                                 te_de_dat$Direction == "Down" &
+                                 te_de_dat$contrast == "ESC_vs_Primed", 1:3] %>% GRanges()
+
+gr_to_bed(te_primed_down_gr, out_path = "RNAseq/processed_data/MEL1_primed_down_te.bed")
+```
+
+
+### Combine bar plots
+```{r}
+cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 1, align = "h")
+```
+
+```{r}
+pdf("manuscript_figure_plots/MEL1_figure_4_differential_feature_barplots.pdf",
+    height = 1.5, width = 5)
+cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 1, align = "h")
+dev.off()
+```
+
+
+```{r}
+pdf("manuscript_figure_plots/MEL1_figure_4_differential_feature_barplots_vertical.pdf",
+    height = 5, width = 1.3)
+cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 4, align = "h")
+dev.off()
+```
+
+## Perform enrichment tests
+
+List of bed files
+```{r}
+bed_list <- c("wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed",
+"wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_corrected.bed",
+"wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_all.bed",
+"wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_corrected.bed",
+"atac/all_differential_peaks_primed_up.bed",
+"atac/all_differential_peaks_primed_down.bed",
+"RNAseq/processed_data/MEL1_primed_up_genes.bed",
+"RNAseq/processed_data/MEL1_primed_down_genes.bed",
+"RNAseq/processed_data/MEL1_primed_up_te.bed",
+"RNAseq/processed_data/MEL1_primed_down_te.bed")
+```
+
+Run the enrichment tests (on server)
+```{r, eval=FALSE}
+
+library(regioneR)
+library(parallel)
+library(BiocParallel)
+library(BSgenome.Hsapiens.UCSC.hg19.masked)
+source("R/server_libraries_and_functions.R")
+
+# GRanges of genomic elements
+all_elements_gr <- readRDS("resources/all_genomic_elements_granges_final.Rds")
+
+CH_dat <- read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+
+CH_dmr$class <- "CH_DMR" 
+
+all_elements_gr <- c(all_elements_gr, CH_dmr)
+
+# Granges of unmappable WGBS regions
+#unmappable_gr <- bed_to_gr("resources/d0_d3_d7_merged_zero_coverage_regions.bed")
+
+target_list <- c("CH_DMR", "Promoter", "Enhancer",  "LINE", "LTR",
+                 "Fibroblast_LAD", "ESC_LAD", "Constitutive_LAD",
+                 "Constitutive_H3K9me3", "ESC_H3K9me3", "Fibroblast_H3K9me3")
+
+
+lapply(bed_list, file.exists) %>% unlist() %>% all()
+
+test_bed <- bed_list[2]
+
+
+test_element_enrichment <- function(target_element="CH_DMR", test_bed,
+                                    permutations=200, cores=30, alt="auto"){
+    
+    stopifnot(file.exists(test_bed))
+    gc()
+    message(Sys.time())
+    message(str_c("Running ", target_element, "..."))
+    target_gr <- all_elements_gr[all_elements_gr$class == target_element]
+    message(str_c("n = "), length(target_gr))
+    
+    test_gr <- bed_to_gr(test_bed)
+    
+    set.seed(123)
+    perm_test_results <- regioneR::permTest(A=test_gr, B=target_gr,
+                                            alternative = alt,
+                                            randomize.function=regioneR::randomizeRegions,
+                                            ntimes = permutations,
+                                            evaluate.function=regioneR::numOverlaps,
+                                            count.once = TRUE,
+                                            genome="hg19", 
+                                            allow.overlaps=FALSE,
+                                            per.chromosome=TRUE,
+                                            mc.cores=cores,
+                                            mc.set.seed=FALSE,
+                                            force.parallel=TRUE)
+    
+    lz <- localZScore(pt=perm_test_results, A=test_gr, B=target_gr,
+                      step = mean(width(test_gr)/2),
+                      window = 100000)
+    
+    results <- list(pt=perm_test_results, lz=lz, element=target_element, 
+                    test_bed=test_bed)
+    
+    message("Done!")
+    return(results)
+}
+
+test_bed_list <- function(bed_file){
+    
+        out <- str_replace(string = basename(bed_file), pattern = ".bed",
+                           replacement = "_element_enrichments.Rds")
+        out <- str_c("element_enrichments/", out)
+        
+        enrich_list <- lapply(target_list, test_element_enrichment,
+                              test_bed=bed_file, 
+                              permutations=200, cores=20)
+
+        saveRDS(object = enrich_list, file = out)
+}
+
+mclapply(X = bed_list, FUN = test_bed_list, mc.cores = 2)
+```
+
+### Upset plot of all DE elements
+```{r}
+
+library(readxl)
+CH_dat <- read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+
+CH_dmr$class <- "CH_DMR" 
+
+bed_list <- c("wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed",
+#"wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_corrected.bed",
+"wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_all.bed",
+#"wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_corrected.bed",
+"atac/all_differential_peaks_primed_up.bed",
+"atac/all_differential_peaks_primed_down.bed",
+"RNAseq/processed_data/MEL1_primed_up_genes.bed",
+"RNAseq/processed_data/MEL1_primed_down_genes.bed",
+"RNAseq/processed_data/MEL1_primed_up_te.bed",
+"RNAseq/processed_data/MEL1_primed_down_te.bed")
+
+read_bed_and_class <- function(bed_path){
+    gr <- bed_to_gr(bed_path = bed_path)
+    gr$class <- basename(bed_path) %>% str_remove(".bed")
+    return(gr)
+}
+
+de_element_gr_list <- lapply(bed_list, read_bed_and_class) %>% GRangesList()
+names(de_element_gr_list) <- basename(bed_list) %>% str_remove(".bed")
+
+
+de_element_gr_union <- de_element_gr_list %>% GRangesList() %>% unlist() %>% reduce()
+
+hits <- lapply(1:length(de_element_gr_list),
+               function(x){overlapsAny(query = de_element_gr_union,
+                                       subject = de_element_gr_list[[x]]+1000)})
+
+hits <- do.call(cbind, hits)
+hits <- data.frame(hits + 0)
+colnames(hits) <- names(de_element_gr_list)
+rownames(hits) <- gr_to_loci(de_element_gr_union)
+head(hits)
+
+upset(hits, order.by = "freq", nsets = length(de_element_gr_list))
+
+hits[hits$MEL1_primed_CG_dmrs_hypo_all == 1 &
+         hits$MEL1_primed_up_te == 1, ]
+
+hits[hits$all_differential_peaks_primed_down == 1 &
+         hits$MEL1_primed_CG_dmrs_hyper_all == 1 &
+         hits$MEL1_primed_down_genes == 1, ]
+
+hits[hits$all_differential_peaks_primed_up == 1 &
+         hits$MEL1_primed_CG_dmrs_hypo_all == 1 &
+         hits$MEL1_primed_up_genes == 1, ]
+
+hits[hits$all_differential_peaks_primed_up == 1 &
+         hits$MEL1_primed_CG_dmrs_hypo_all == 1 &
+         hits$MEL1_primed_up_te == 1, ]
+
+```
+
+
+Load the enrichment data
+```{r}
+enrich_rds_list <- c(list.files(path = "element_enrichments/",
+                                pattern = "_element_enrichments.Rds",
+                                full.names = TRUE))
+
+process_enrichments <- function(enrich_rds){
+    
+    enrich_list <- readRDS(enrich_rds)
+    
+    get_stats <- function(x){
+        
+        results <- enrich_list[[x]]
+        
+        df <- data.frame(file=results$test_bed,
+                         element=results$element,
+                         z_score=results[[1]]$`regioneR::numOverlaps`$zscore,
+                         p_value=results[[1]]$`regioneR::numOverlaps`$pval,
+                         permutations=results[[1]]$`regioneR::numOverlaps`$ntimes,
+                         alternative=results[[1]]$`regioneR::numOverlaps`$alternative,
+                         observed=results[[1]]$`regioneR::numOverlaps`$observed)
+        return(df)
+        
+    }
+    
+    stats_df <- lapply(1:length(enrich_list), get_stats) %>% do.call(rbind, .)
+    
+    return(stats_df)
+    
+}
+
+enrich_dat <- lapply(enrich_rds_list, process_enrichments) %>% do.call(rbind, .)
+
+enrich_dat$feature <- enrich_dat$file %>% basename() %>%
+    str_remove(pattern = "MEL1_") %>%
+    str_replace(pattern = "all_differential_peaks_", replacement = "ATAC_") %>%
+    str_remove("tnt_corrected_") %>%
+    str_remove(".bed")
+
+
+enrich_dat$class <- NA
+
+enrich_dat$class[grepl(pattern = "dmrs_hypo", x = enrich_dat$feature)] <- "DMRs"
+enrich_dat$class[grepl(pattern = "dmrs_hyper", x = enrich_dat$feature)] <- "DMRs"
+enrich_dat$class[grepl(pattern = "ATAC", x = enrich_dat$feature)] <- "ATAC_peaks"
+enrich_dat$class[grepl(pattern = "_te", x = enrich_dat$feature)] <- "TEs"
+enrich_dat$class[grepl(pattern = "_genes", x = enrich_dat$feature)] <- "Genes"
+
+enrich_dat$class <- factor(enrich_dat$class, levels=c("DMRs", "Genes", "TEs", "ATAC_peaks"))
+
+
+enrich_dat$element_class <- NA
+enrich_dat$element_class[grepl(pattern = "Promoter", x = enrich_dat$element)] <- "REs"
+#enrich_dat$element_class[grepl(pattern = "Exon", x = enrich_dat$element)] <- "Gene"
+#enrich_dat$element_class[grepl(pattern = "Intron", x = enrich_dat$element)] <- "Gene"
+
+enrich_dat$element_class[grepl(pattern = "Enhancer", x = enrich_dat$element)] <- "REs"
+
+enrich_dat$element_class[grepl(pattern = "LTR", x = enrich_dat$element)] <- "TEs"
+enrich_dat$element_class[grepl(pattern = "LINE", x = enrich_dat$element)] <- "TEs"
+
+enrich_dat$element_class[grepl(pattern = "LAD", x = enrich_dat$element)] <- "LADs"
+enrich_dat$element_class[grepl(pattern = "H3K9me3", x = enrich_dat$element)] <- "H3K9me3"
+
+enrich_dat$element_class[grepl(pattern = "CH_DMR", x = enrich_dat$element)] <- "CH-DMRs"
+
+
+enrich_dat$element_class <- factor(enrich_dat$element_class,
+                                   levels=c("REs", "CH-DMRs", "LADs", "H3K9me3", "TEs"))
+
+
+enrich_dat$element <- factor(enrich_dat$element, levels=c("Promoter",
+                                                          "Enhancer",
+                                                          "CH_DMR",
+                                                          "Fibroblast_LAD",
+                                                          "Constitutive_LAD",
+                                                          "ESC_LAD",
+                                                          "Fibroblast_H3K9me3",
+                                                          "Constitutive_H3K9me3",
+                                                          "ESC_H3K9me3",
+                                                          "LTR",
+                                                          "LINE"))
+
+gg_enrich_bar <- ggplot(enrich_dat, aes(y = feature, x=z_score)) +
+    geom_col() +
+    facet_wrap(facets = element~., ncol = 2, drop = TRUE, scales = "free") + 
+    sams_pub_theme(legend_pos = "right")
+gg_enrich_bar
+
+
+# Put limit z-scores for colours on heatmap
+enrich_dat$z_score %>% summary()
+enrich_dat$z_score[enrich_dat$z_score > 5] <- 5
+enrich_dat$z_score[enrich_dat$z_score < -5] <- -5
+
+#enrich_dat$z_score[enrich_dat$p_value > 0.05] <- 0 
+
+
+gg_enrich <- ggplot(enrich_dat[!grepl("_corrected", enrich_dat$feature), ],
+                    aes(x = element, y = feature, fill=z_score)) +
+    geom_tile(colour="black") +
+    scale_fill_gradient2(low = vitC[1], mid = "white", high = vitC[6]) +
+    facet_grid(class~element_class, space = "free", drop = TRUE, scales = "free") + 
+    sams_pub_theme(legend_pos = "right") +
+    xlab("") + ylab("")
+gg_enrich
+
+pdf("manuscript_figure_plots/MEL1_feature_enrichments_heatmap.pdf", width = 4, height = 3)
+gg_enrich
+dev.off()
+
+
+```
+
+
+## Volcano and MA plots of differential ATAC peaks
+```{r}
+atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
+atac_tt <- atac_tt[order(atac_tt$FDR, decreasing = TRUE), ]
+atac_tt$contrast <- str_remove(string = atac_tt$contrast, pattern = "group")
+atac_tt$contrast <- factor(atac_tt$contrast, levels = c("Primed", "TNT", "NtP"))
+
+gg_ma_atac <- ggplot(atac_tt, aes(x = logCPM, y=logFC, fill=significant, colour=significant)) +
+    geom_point(size=0.5) + 
+    facet_grid(.~contrast) +
+    scale_colour_manual(values = c("grey", "firebrick")) +
+              geom_point(alpha=0.5, size=0.8) +
+              xlab("Log2 CPM") + ylab("Log2 fold change") +
+              geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+              geom_vline(xintercept = 1, alpha=0.5, linetype='dashed') +
+              sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+png("manuscript_figure_plots/MEL1_atac_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
+gg_ma_atac
+dev.off()
+```
+
+## Volcano and MA plots of differential genes
+```{r}
+
+gene_df <- gene_df[order(gene_df$PValue, decreasing = TRUE), ]
+
+gene_df$contrast[gene_df$contrast == "N2P"] <- "NtP"
+gene_df$contrast <- factor(gene_df$contrast, levels=c("Primed", "TNT", "NtP"))
+
+gg_ma_gene <- ggplot(gene_df, aes(x = logCPM, y=-logFC, fill=significant, colour=significant)) +
+    geom_point(size=0.5) + 
+    facet_grid(.~contrast) +
+    scale_colour_manual(values = c("grey", "firebrick")) +
+              geom_point(alpha=0.5, size=0.8) +
+              xlab("Log2 CPM") + ylab("Log2 fold change") +
+              geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+              geom_vline(xintercept = 1, alpha=0.5, linetype='dashed') +
+              sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+png("manuscript_figure_plots/MEL1_gene_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
+gg_ma_gene
+dev.off()
+```
+
+## Plots for imprinted genes
+
+Plot mCG in ICRs
+```{r}
+library(readxl)
+icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
+
+icr_gr <- GRanges(seqnames = icrs$Chromosome, IRanges(start = icrs$Start, end = icrs$End))
+mcols(icr_gr) <- icrs
+
+icr_gr <- GRanges(seqnames = icrs$Chromosome, IRanges(start = icrs$Start, end = icrs$End))
+mcols(icr_gr) <- icrs
+
+#CG_obj_list <- list.files("wgbs/CG_bsobj/",
+#                          pattern = "MEL1", full.names = TRUE)
+
+mdat_wgbs
+
+#ds <- read_xlsx("resources/human_ips_datasets.xlsx")
+
+#ds_sub <- ds[ds$Sample == "MEL1", ]
+#ds_sub <- ds_sub[1:7, ]
+
+#CG_obj_list <- CG_obj_list[basename(CG_obj_list) %in% basename(as.character(ds_sub$CG_BSobj.Rds))]
+#ind <- match(basename(CG_obj_list), basename(as.character(ds_sub$CG_BSobj.Rds)))
+
+#all(basename(CG_obj_list) == basename(as.character(ds_sub$CG_BSobj.Rds)))
+
+#annot_col <- ds_sub[ind, c(7,13)] %>% data.frame()
+#annot_col$Sample[grepl("ESC", annot_col$Sample)] <- "ESC line"
+
+#rownames(annot_col) <- ds_sub$Short_name[ind]
+
+annot_row <- icrs[ ,c(5,13)] %>% data.frame()
+rownames(annot_row) <- icrs$Name %>% makeUnique()
+annot_row$Categoly[grepl("Secondary", annot_row$Categoly)] <- "Secondary-DMR"
+colnames(annot_row) <- c("Methylated allele", "Category")
+
+#annot_col$Sample <- factor(annot_col$Sample)
+#annot_col$State <- factor(annot_col$State)
+
+icr_matrix <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local, gr = icr_gr)
+rownames(icr_matrix) <- icr_gr$Name %>% makeUnique()
+#annot_row <- icrs[ ,c(5,13)] %>% data.frame()
+
+colnames(icr_matrix) <- mdat_wgbs$label
+
+hm <- pheatmap(icr_matrix, clustering_distance_cols = "correlation",
+               show_rownames = TRUE, border_color = NA, 
+         fontsize = 5, main="Imprint control regions",
+         annotation_row = annot_row)
+
+pdf("methylCseq/plots/MEL1_germline_ICR_methylation_heatmap.pdf", width = 5, height = 6)
+pheatmap(icr_matrix,
+               show_rownames = TRUE, border_color = NA,
+         fontsize = 5, main="Imprint control regions",
+         annotation_row = annot_row)
+dev.off()
+
+
+```
+
+
+
+```{r}
+library(readxl)
+icrs <- readxl::read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
+
+icr_gr <- GRanges(seqnames = icrs$Chromosome, IRanges(start = icrs$Start, end = icrs$End))
+gr_to_bed(gr = icr_gr, out_path = "resources/pastor_icr_regions.bed")
+
+gene_df_imprint <- gene_df[gene_df$gene_id %in% icrs$Name, ]
+gene_df_imprint$contrast[gene_df_imprint$contrast == "N2P"] <- "NtP"
+
+gg_imprint_volcano <- ggplot(gene_df_imprint, aes(x = logFC, y = -log10(PValue))) +
+    geom_point() +
+    facet_grid(.~contrast)
+
+gg_imprint_volcano <- ggplot(gene_df_imprint, aes(y = logFC, x = logCPM)) +
+    geom_point() +
+    facet_grid(.~contrast)
+
+gg_imprint_points <- ggplot(gene_df_imprint, aes(x = contrast, y = -logFC, colour=significant)) +
+    geom_jitter(width = 0.2) + sams_pub_theme() + 
+    scale_colour_manual(values = c("grey", "firebrick")) +
+    ylab("Log2 fold change") +
+              geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+              sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+```
+
+Plot mCG change with expression change of ICRs and genes
+```{r}
+
+ind <- match(gene_df_imprint$gene_id, rownames(icr_matrix))
+
+group_ids <- unique(mdat_wgbs$group)
+
+get_icr_means <- function(group){
+    
+    message(group)
+    dat <- icr_matrix[ ,mdat_wgbs$group == group] %>% data.frame()
+    means <- NA
+    if (ncol(dat) > 1){
+        means <- rowMeans(dat, na.rm = TRUE)
+    } else {
+        means <- dat 
+    }
+    means <- data.frame(means)
+    colnames(means) <- group
+    #means$group <- group
+    #colnames(means) <- c("mCG", "Group")
+    return(means)
+}
+
+icr_means <- lapply(group_ids, get_icr_means) %>% do.call(cbind, .)
+
+calc_icr_delta <- function(group){
+    
+    dat <- icr_means[ ,group] - icr_means[ ,"ESC"] %>% as.numeric()
+    dat <- data.frame(Group=group, mCG_delta=dat, Gene=rownames(icr_means))
+    
+}
+
+icr_delta_dat <- lapply(c("Primed", "TNT", "NtP"), calc_icr_delta) %>%
+    do.call(rbind, .)
+
+icr_delta_dat <- icr_delta_dat[icr_delta_dat$Gene %in% gene_df_imprint$gene_id, ]
+icr_delta_dat$id <- str_c(icr_delta_dat$Group, icr_delta_dat$Gene, sep = "_")
+
+gene_df_imprint$id <- str_c(gene_df_imprint$contrast, gene_df_imprint$gene_id, sep = "_")
+
+icr_merge_df <- merge.data.frame(gene_df_imprint, icr_delta_dat, by = "id", all = FALSE)
+
+icr_means$gene_id <- rownames(icr_means)
+icr_means_melt <- reshape2::melt(icr_means)
+icr_means_melt$id <- str_c(icr_means_melt$variable, icr_means_melt$gene_id, sep = "_")
+
+icr_merge_df <- merge.data.frame(icr_merge_df, icr_means_melt, by = "id", all = FALSE)
+
+
+icr_merge_df$contrast <- factor(icr_merge_df$contrast, levels=c("Primed", "TNT", "NtP"))
+
+gg_icr_diff_x_y <- ggplot(icr_merge_df, aes(x = -logFC, y = mCG_delta, colour=significant)) +
+    geom_point(alpha=0.5) + facet_grid(.~contrast) + 
+    xlim(c(-10, 10)) + ylim(-1, 1) +
+    scale_colour_manual(values = c("grey", "firebrick")) +
+    geom_vline(xintercept = 0, linetype="dashed") + 
+    geom_hline(yintercept = 0, linetype="dashed") +
+    ylab("ICR mCG difference (hiPSC - hESC)") +
+    xlab("Imprinted gene expression difference for hiPSC vs hESC (log2 fold-change)") +
+    sams_pub_theme(x.text.angle = 0) +
+    ggtitle("mCG difference at ICRs versus imprinted gene expression change")
+
+pdf("manuscript_figure_plots/MEL1_ICR_mCG_versus_gene_FC_scatter.pdf", height = 2, width = 4.5)
+gg_icr_diff_x_y
+dev.off()
+
+
+# ggplot(icr_merge_df, aes(x = -logFC, y = value, colour=significant)) +
+#     geom_point(alpha=0.5) + facet_grid(.~contrast) + 
+#     xlim(c(-10, 10)) + ylim(0, 1) +
+#     scale_colour_manual(values = c("grey", "firebrick")) +
+#     geom_vline(xintercept = 0, linetype="dashed") + 
+#     geom_hline(yintercept = 0.5, linetype="dashed") +
+#     ylab("ICR mCG difference (hiPSC - hESC)") +
+#     xlab("Imprinted gene expression difference for hiPSC vs hESC (log2 fold-change)") +
+#     sams_pub_theme(x.text.angle = 0)
+# 
+# 
+
+```
+
+
+Cluster imprinted genes by expression
+```{r}
+# Load the RNA metadata
+mdat_rna <- fread("RNAseq/polyA_RNAseq_sample_table.csv")
+mdat_rna$model_group <- str_c(mdat_rna$Group, mdat_rna$Donor, sep = "_")
+
+# List the counts tables for all samples
+cnt_files <- list.files(path = "RNAseq/polyA/MEL1_data/", full.names = TRUE)
+
+# Load the count data
+dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>% 
+    do.call(cbind, .)
+libs <- colnames(dat2) %>%
+    str_remove("X.home.sbuckberry.working_data_02.polo_project.human_ips.RNAseq.polyA.aligned_data.") %>% str_sub(start = 1, end = 6)
+colnames(dat2) <- libs
+
+# Match the metadata with the count data
+ind <- match(colnames(dat2), mdat_rna$Library)
+mdat_rna <- mdat_rna[ind, ]
+all(colnames(dat2) == mdat_rna$Library)
+
+# Normalise the data
+norm_cpm <- cpm(dat2, log = TRUE)
+
+# Extract the imprinted genes
+imprint_cpm <- norm_cpm[rownames(norm_cpm) %in% icr_merge_df$Gene, ]
+colnames(imprint_cpm) <- mdat_rna$Label
+
+# Make heatmap
+pdf(file = "manuscript_figure_plots/MEL1_ICR_gene_normalised_expression_scaled_heatmap.pdf", width = 4, height = 6.5)
+pheatmap(imprint_cpm, scale = "row", border_color = NA, fontsize = 7)
+dev.off()
+
+```
+
+
+## Volcano and MA plots of differential TE's
+```{r}
+
+te_de_dat <- read.table(file = "RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
+
+te_de_dat_plot <- te_de_dat[te_de_dat$contrast %in% c("ESC_vs_Primed", "ESC_vs_TNT", "Primed_vs_N2P"), ]
+te_de_dat_plot$contrast <- factor(te_de_dat_plot$contrast,
+                                  levels=c("ESC_vs_Primed", "ESC_vs_TNT", "Primed_vs_N2P"))
+
+te_de_dat_plot <- te_de_dat_plot[order(te_de_dat_plot$PValue, decreasing = TRUE), ]
+
+gg_ma_te <- ggplot(te_de_dat_plot, aes(x = logCPM, y=-logFC, fill=significant, colour=significant)) +
+    geom_point(size=0.5) + 
+    facet_grid(.~contrast) +
+    scale_colour_manual(values = c("grey", "firebrick")) +
+              geom_point(alpha=0.5, size=0.8) +
+              xlab("Log2 CPM") + ylab("Log2 fold change") +
+              geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+              geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
+              sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+png("manuscript_figure_plots/MEL1_te_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
+gg_ma_te
+dev.off()
+
+
+```
+
+
+
+
+## Motif analysis of differential atac peaks
+```{r}
+parallel -j2 findMotifsGenome.pl {} hg19 {.}homer/ -size given -p 20 ::: /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed*.bed
+
+
+```
+
+## Footprinting of differential ATAC peaks
+### Run on server
+
+### Get BED files for enriched motifs
+
+Interset motif beds with DE peaks
+```{bash}
+bedtools intersect -wa \
+-a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_all.bed \
+-b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_down.bed \
+> /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed
+
+bedtools intersect -wa \
+-a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/KLF4_MA0039.4/beds/KLF4_MA0039.4_all.bed \
+-b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
+> /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4_all.bed
+
+bedtools intersect -wa \
+-a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/CTCF_MA0139.1/beds/CTCF_MA0139.1_all.bed \
+-b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
+> /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_CTCF_MA0139.1_all.bed
+
+
+bedtools intersect -wa \
+-a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/NFYA_MA0060.3/beds/NFYA_MA0060.3_all.bed \
+-b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
+> /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_NFYA_MA0060.3_all.bed
+
+
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed
+```
+
+
+Plot footprints
+```{r}
+
+cd /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/
+
+TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 500 \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_flank_500.pdf
+
+TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 100 \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_flank_100.pdf
+
+
+TOBIAS PlotAggregate --plot_boundaries --share-y signals --flank 30 \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4_all.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4.pdf
+
+TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 150 \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_CTCF_MA0139.1_all.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_CTCF_MA0139.pdf
+
+
+TOBIAS PlotAggregate --plot_boundaries --share-y both \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_NFYA_MA0060.3_all.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/all_differential_peaks_primed_up_NFYA_MA0060.3_all.pdf
+
+git add /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/*.pdf && git commit -m 'plot updates' && git pull && git push
+```
+
+
+```{r}
+
+TOBIAS PlotAggregate --share_y both --plot_boundaries --signal-on-x \
+--TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed \
+--signals PSC_ESC_all_merge_corrected_footprints.bw \
+PSC_Primed_all_merge_corrected_footprints.bw \
+PSC_TNT_all_merge_corrected_footprints.bw \
+PSC_NtP_all_merge_corrected_footprints.bw \
+--signal-labels ESC Primed TNT NtP \
+--output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_esc_bound_POU5F1.pdf
+
+
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed
+```
+
+
+
+
+Plot mCG in ICRs
+```{r}
+icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
+
+icr_gr <- GRanges(seqnames = icrs$Chromosome, IRanges(start = icrs$Start, end = icrs$End))
+mcols(icr_gr) <- icrs
+
+mdat_wgbs <- read.csv("wgbs/metadata/wgbs_paths_peb_servers.csv")
+mdat_wgbs_MEL1 <- mdat_wgbs[mdat_wgbs$donor == "MEL1", ] 
+
+CG_obj_list <- list.files(path = "wgbs/CG_bsobj/", full.names = TRUE)
+CG_obj_list <- CG_obj_list[basename(CG_obj_list) %in% basename(mdat_wgbs_MEL1$CG_bsobj)]
+
+stopifnot(all(basename(CG_obj_list) == basename(mdat_wgbs_MEL1$CG_bsobj)))
+
+annot_col <- data.frame(Group=mdat_wgbs_MEL1$group)
+rownames(annot_col) <- mdat_wgbs_MEL1$label
+
+annot_row <- icrs[ ,c(5,13)] %>% data.frame()
+rownames(annot_row) <- icrs$Name %>% makeUnique()
+annot_row$Categoly[grepl("Secondary", annot_row$Categoly)] <- "Secondary-DMR"
+colnames(annot_row) <- c("Methylated allele", "Category")
+
+icr_matrix <- make_mC_matrix(obj_fls = CG_obj_list, gr = icr_gr, cores = 3)
+icr_matrix <- data.frame(icr_matrix)
+rownames(icr_matrix) <- icr_gr$Name %>% makeUnique()
+#annot_row <- icrs[ ,c(5,13)] %>% data.frame()
+
+colnames(icr_matrix) <- mdat_wgbs_MEL1$label
+
+icr_matrix <- icr_matrix[!grepl(pattern = "Placenta", x = icr_gr$Categoly, ignore.case = TRUE), ]
+
+hm <- pheatmap(icr_matrix,
+               show_rownames = TRUE, border_color = NA,
+         fontsize = 5, main="Imprint control regions",
+         annotation_row = annot_row)
+
+pdf("manuscript_figure_plots/MEL1_germline_ICR_methylation_heatmap.pdf", width = 4, height = 5)
+pheatmap(icr_matrix, clustering_distance_cols = "correlation",
+               show_rownames = TRUE, border_color = NA,
+         fontsize = 5, main="Imprint control regions",
+         annotation_row = annot_row)
+dev.off()
+
+
+```
+
+
+

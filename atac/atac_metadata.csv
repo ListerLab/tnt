@@ -1,0 +1,13 @@
+library,Manuscript.Name,cell_type,State,rep,bam,id,track,label
+RL2436,hESC_p13_33,PSC,ESC,1,RL2436_merge_no_chrM.bam,ESC_PSC_1_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2436_coverage.bigwig,ESC_p46
+RL2442,hESC_p13_34,PSC,ESC,2,RL2442_merge_no_chrM.bam,ESC_PSC_2_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2442_coverage.bigwig,ESC_p47
+RL2448,hESC_p13_35,PSC,ESC,3,RL2448_merge_no_chrM.bam,ESC_PSC_3_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2448_coverage.bigwig,ESC_p48
+RL2439,hiPSC_NtP_p13_73,PSC,NtP,1,RL2439_merge_no_chrM.bam,NtP_PSC_1_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2439_coverage.bigwig,NtP_p26
+RL2443,hiPSC_NtP_p9_21,PSC,NtP,2,RL2443_merge_no_chrM.bam,NtP_PSC_2_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2443_coverage.bigwig,NtP_p30
+RL2450,hiPSC_NtP_p9_22,PSC,NtP,3,RL2450_merge_no_chrM.bam,NtP_PSC_3_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2450_coverage.bigwig,NtP_p31
+RL2438,hiPSC_primed_p40,PSC,Primed,1,RL2438_merge_no_chrM.bam,Primed_PSC_1_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2438_coverage.bigwig,Primed_p40
+RL2454,hiPSC_primed_p42,PSC,Primed,2,RL2454_merge_no_chrM.bam,Primed_PSC_2_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2454_coverage.bigwig,Primed_p42
+RL2458,hiPSC_primed_p44,PSC,Primed,3,RL2458_merge_no_chrM.bam,Primed_PSC_3_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2458_coverage.bigwig,Primed_p44
+RL2437,hiPSC_TNT_p42,PSC,TNT,1,RL2437_merge_no_chrM.bam,TNT_PSC_1_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2437_coverage.bigwig,TNT_p42
+RL2449,hiPSC_TNT_p44,PSC,TNT,2,RL2449_merge_no_chrM.bam,TNT_PSC_2_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2449_coverage.bigwig,TNT_p44
+RL2457,hiPSC_TNT_p43,PSC,TNT,3,RL2457_merge_no_chrM.bam,TNT_PSC_3_ATAC,gs://human-reprogramming-browser/atac_bigwigs/RL2457_coverage.bigwig,TNT_p43

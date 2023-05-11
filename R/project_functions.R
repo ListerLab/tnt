@@ -63,6 +63,10 @@ reprog_pal2 <- c(TNT="#eebc4cff", Primed="#009e73ff",
                  NtP="#55b3eaff", ESC="#a3a3a3ff",
                  Naive="#0072b2ff", HDF="#cc79a7ff")
 
+reprog_pal3 <- c(TNT="#eebc4cff", Primed="#009e73ff",
+                 NtP="#55b3eaff", hESC="#a3a3a3ff",
+                 Naive="#0072b2ff", HDF="#cc79a7ff")
+
 
 #barplot(rep(1, times=length(reprog_pal2)), col=reprog_pal2)
 
