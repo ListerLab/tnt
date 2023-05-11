@@ -619,9 +619,15 @@ openxlsx::writeData(wb = wb_ed_fig5, sheet = "ED_Fig_5a",
 
 ```{r, eval=FALSE}
 source("R/server_libraries_and_functions.R")
+source("R/project_functions.R")
+
 all_elements_gr <- readRDS("resources/all_genomic_elements_granges_final.Rds")
 dmr_list <- readRDS("wgbs/dmrs/dmr_list_filtered.Rds")
 
+CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
+mcols(CH_dmr)$class <- "CH_DMR"
+
+all_elements_gr <- c(all_elements_gr, CH_dmr)
 
 #### Peak enrichment
 test_dmr_enrichment <- function(target_element="Fibroblast_H3K9me3", test_gr,
@@ -652,7 +658,7 @@ test_dmr_enrichment <- function(target_element="Fibroblast_H3K9me3", test_gr,
                                             per.chromosome=TRUE,
                                             mc.cores=cores,
                                             mc.set.seed=FALSE,
-                                            force.parallel=TRUE)
+                                            force.parallel=FALSE)
 
     lz <- regioneR::localZScore(pt=perm_test_results, A=test_gr, B=target_gr,
                       step = mean(width(test_gr)/2),
@@ -678,32 +684,33 @@ ma_enrich <- lapply(X = regions, FUN = test_dmr_enrichment,
 saveRDS(ma_enrich, "wgbs/processed_data/ma-2014-cg-dmr-enrichment-list.Rds")
 
 ## Ch-DMR enrichments
-CH_dmr <- bed_to_gr("resources/nature13551-s3.bed")
-mcols(CH_dmr)$class <- "CH_DMR"
 
-all_elements_gr <- c(all_elements_gr, CH_dmr)
 
 primary_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
                                              cores = 3,
                                              test_gr = dmr_list$Batch_A)
+saveRDS(primary_ch_dmr_enrich, "wgbs/processed_data/primary_ch_dmr_enrich.Rds")
 
 lister_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
                                              cores = 3,
-                                             test_gr = 4)
+                                             test_gr = dmr_list$Lister)
+saveRDS(lister_ch_dmr_enrich, "wgbs/processed_data/lister_ch_dmr_enrich.Rds")
 
 ma_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
                                              cores = 3,
                                              test_gr = dmr_list$Ma)
+saveRDS(ma_ch_dmr_enrich, "wgbs/processed_data/ma_ch_dmr_enrich.Rds")
 
 ## Get data on promoter and enhancer enrichment in CH-DMRs
 promoter_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
                                              cores = 3,
                                              test_gr = all_elements_gr[all_elements_gr$class == "Promoter"])
+saveRDS(promoter_ch_dmr_enrich, "wgbs/processed_data/promoter_ch_dmr_enrich.Rds")
 
 enh_ch_dmr_enrich <- test_dmr_enrichment(target_element = "CH_DMR",
                                              cores = 3,
                                              test_gr = all_elements_gr[all_elements_gr$class == "Enhancer"])
-
+saveRDS(enh_ch_dmr_enrich, "wgbs/processed_data/enh_ch_dmr_enrich.Rds")
 
 grps <- c("Primary_fibroblasts", "Lister_2011", "Ma 2014", "Promoters", "Enhancers")
 enrich_ch_df <- data.frame(Group=factor(grps, levels=rev(grps)), Zscore=c(primary_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
@@ -712,19 +719,30 @@ enrich_ch_df <- data.frame(Group=factor(grps, levels=rev(grps)), Zscore=c(primar
                        promoter_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore,
                        enh_ch_dmr_enrich$pt$`regioneR::numOverlaps`$zscore))
 
+gg_enricg_cg <- ggplot(data = enrich_ch_df, aes(x = Group, y = Zscore)) +
+    geom_col() + coord_flip() + sams_pub_theme()
+
 pdf("wgbs/plots/lister-ma-cg-dmr-in-ch-dmr-enrichment-plots.pdf",
     height = 1.3, width = 3)
-ggplot(data = enrich_ch_df, aes(x = Group, y = Zscore)) +
-    geom_col() + coord_flip() + sams_pub_theme()
+gg_enricg_cg
 dev.off()
+```
 
-## Percentage of overlapping CG-DMRs with CH-DMRs
-lapply(X = dmr_list,
-       FUN = function(x){sum(overlapsAny(x, subject = CH_dmr))/length(x)})
+```{r}
+wb_ed_fig5d <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig5d, sheetName = "ED_Fig_5d")
+openxlsx::writeData(wb = wb_ed_fig5d, sheet = "ED_Fig_5d",
+                    x = gg_enricg_cg$data)
+openxlsx::saveWorkbook(wb = wb_ed_fig5d,
+                       file = "ED_Figure_5d_source_data.xlsx", overwrite = TRUE)
 ```
 
 
-```{r, cache=TRUE}
+```{r, eval=FALSE}
+## Percentage of overlapping CG-DMRs with CH-DMRs
+lapply(X = dmr_list,
+       FUN = function(x){sum(overlapsAny(x, subject = CH_dmr))/length(x)})
+
 lister_enrich <- readRDS("wgbs/processed_data/lister-2011-cg-dmr-enrichment-list.Rds")
 ma_enrich <- readRDS("wgbs/processed_data/ma-2014-cg-dmr-enrichment-list.Rds")
 

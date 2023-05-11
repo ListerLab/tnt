@@ -455,6 +455,16 @@ background <- c("32F", "38F", "iPSC_S1", "iPSC_S2",
 
 
 ```{r}
+wb_ed_fig5e <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig5e, sheetName = "ED_Fig_5e")
+openxlsx::writeData(wb = wb_ed_fig5e, sheet = "ED_Fig_5e",
+                    x = hm_dat[complete.cases(hm_dat), ])
+openxlsx::saveWorkbook(wb = wb_ed_fig5e,
+                       file = "ED_Figure_5e_source_data.xlsx", overwrite = TRUE)
+```
+
+
+```{r}
 fib_c_pl <- plot_ch(progenitor = c("Fibroblast"), batch = "C",
                     background = "32F", lab = "Lister",
                     title = "Fibroblast 32F")
