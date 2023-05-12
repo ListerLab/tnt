@@ -1940,16 +1940,52 @@ openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6d",
 ```
 
 ```{r, cache=TRUE}
-type_32F <- readRDS("~/Downloads/drive-download-20230512T033020Z-001/32F_celltype.rds")
+type_32F <- readRDS("scRNAseq/32F_celltype.rds")
+
+pdf("scRNAseq/32F_celltype_umap.pdf", width = 5, height = 4)
 type_32F
+dev.off()
+
+type_32F
+```
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "ED_Fig_6f_type")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6f_type",
+                    x = type_32F$data)
 ```
 
 
 ```{r, cache=TRUE}
-treat_32F <- readRDS("~/Downloads/drive-download-20230512T033020Z-001/32F_treatment.rds")
+treat_32F <- readRDS("scRNAseq/32F_treatment.rds")
 
-cowplot::plot_grid(type_32F, type_32F, nrow = 1, ncol = 2)
+pdf("scRNAseq/32F_treatment_umap.pdf", width = 4, height = 3)
+treat_32F
+dev.off()
 
+treat_32F
+```
+
+UMAP
+```{r}
+gg_treat_32F <- ggplot(data = treat_32F$data, aes(x = UMAP_1, y = UMAP_2,
+                                                  colour=group)) +
+    geom_point(size=0.1) +
+    sams_pub_theme(legend_pos = "right")
+
+gg_type_32F <- ggplot(data = type_32F$data, aes(x = UMAP_1, y = UMAP_2,
+                                                  colour=clusterprop)) +
+    geom_point(size=0.1) +
+    sams_pub_theme(legend_pos = "right")
+
+cowplot::plot_grid(gg_treat_32F, gg_type_32F)
+```
+
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "ED_Fig_6f_treatment")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6f_treatment",
+                    x = treat_32F$data)
 ```
 
 

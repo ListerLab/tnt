@@ -93,9 +93,9 @@ enh_cg_pca
 ```
 
 ```{r}
-wb_fig5 <- openxlsx::createWorkbook()
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_mCG")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_mCG",
+wb_fig4 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_mCG")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_mCG",
                     x = enh_cg_pca$data)
 
 ```
@@ -237,8 +237,8 @@ mCA_pca
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_mCA")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_mCA",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_mCA")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_mCA",
                     x = mCA_pca$data)
 ```
 
@@ -285,8 +285,8 @@ atac_pca
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_atac")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_atac",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_atac")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_atac",
                     x = atac_pca$data)
 ```
 
@@ -341,8 +341,8 @@ gene_pca
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_gene")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_gene",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_gene")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_gene",
                     x = gene_pca$data)
 ```
 
@@ -355,8 +355,8 @@ te_pca
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_te")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_te",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_te")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_te",
                     x = te_pca$data)
 ```
 
@@ -395,8 +395,8 @@ k9_pca
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5b_k9")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5b_k9",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4b_k9")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4b_k9",
                     x = k9_pca$data)
 ```
 
@@ -501,8 +501,8 @@ gg_dmr
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_dmr")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_dmr",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4d_dmr")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4d_dmr",
                     x = gg_dmr$data)
 ```
 
@@ -568,8 +568,8 @@ gg_atac
 
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_atac")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_atac",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4d_atac")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4d_atac",
                     x = gg_atac$data)
 ```
 
@@ -645,8 +645,8 @@ gg_gene
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_gene")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_gene",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4d_gene")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4d_gene",
                     x = gg_gene$data)
 ```
 
@@ -700,8 +700,8 @@ gg_te
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_te")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_te",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4d_te")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4d_te",
                     x = gg_te$data)
 ```
 
@@ -1028,8 +1028,8 @@ gg_enrich
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5f")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5f",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4f")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4f",
                     x = gg_enrich$data)
 ```
 
@@ -1059,8 +1059,8 @@ gg_ma_atac
 
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_atac")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_atac",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4c_atac")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4c_atac",
                     x = gg_enrich$data)
 ```
 
@@ -1091,8 +1091,8 @@ gg_ma_gene
 
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_gene")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_gene",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4c_gene")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4c_gene",
                     x = gg_enrich$data)
 ```
 
@@ -1353,7 +1353,6 @@ openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_te",
                     x = gg_ma_te$data)
 ```
 
-
 Motif analysis of differential atac peaks. Bash, run remotely
 ```{r, eval=FALSE}
 parallel -j2 findMotifsGenome.pl {} hg19 {.}homer/ -size given -p 20 ::: /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed*.bed
@@ -1411,6 +1410,166 @@ pheatmap(icr_matrix, clustering_distance_cols = "correlation",
 openxlsx::addWorksheet(wb_ed_fig9, sheetName = "Fig_9d")
 openxlsx::writeData(wb = wb_ed_fig9, sheet = "Fig_9d",
                     x = icr_matrix)
+```
+
+
+Fig 4e. MEL1 CH DMR summary plots
+```{r, cache=TRUE}
+dfl <- readRDS("wgbs/processed_data/MEL1_CH_DMR_window_dat.Rds")
+CH_dat <- read_excel(path = "resources/nature13551-s3.xlsx")
+CH_dmr <- GRanges(seqnames = CH_dat$chr,
+                  ranges = IRanges(start = as.numeric(CH_dat$start),
+                                   end = as.numeric(CH_dat$end)))
+CH_dmr$presence <- CH_dat$presence
+CH_dmr$loci <- gr_to_loci(CH_dmr)
+
+dfl$loci <- rownames(dfl)
+class(dfl)
+tail(dfl)
+table(dfl$id)
+
+dfl$loci <- rep(gr_to_loci(CH_dmr), times=length(unique(dfl$id)))
+
+keep <- dfl$loci %in% CH_dmr$loci[CH_dmr$presence == "all iPSCs"]
+table(keep)
+
+dfl <- dfl[keep, ]
+
+dim(dfl)
+dfl[1:6, 1:6]
+
+
+### Normalise to max (flank normalisation)
+max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, 1:30], na.rm = TRUE)
+    return(vec)
+}
+
+flank_max_norm <- function(x){
+    vec <- dfl[x, 1:30] / max(dfl[x, c(1:10, 21:30)], na.rm = TRUE)
+    return(vec)
+}
+
+dfl_norm <- lapply(X = 1:nrow(dfl), max_norm) %>% do.call(rbind, .)
+dfl_norm$id <- dfl$id
+dfl_norm$loci <- dfl$loci
+
+
+#norm_dat <- dfl_norm
+
+
+## Add group data
+get_short_name <- function(x){
+    sn <- mdat_wgbs$Manuscript.Name[match(dfl_norm$id, mdat_wgbs$Library_id)]
+    grp <- mdat_wgbs$Group[match(dfl_norm$id, mdat_wgbs$Library_id)]
+    media <- mdat_wgbs$Media[match(dfl_norm$id, mdat_wgbs$Library_id)]
+    data.frame(sn=sn, grp=grp, media=media)
+}
+
+
+sn_dat <- lapply(1:nrow(dfl_norm), get_short_name) %>% do.call(rbind, .)
+
+norm_dat <- cbind(dfl_norm, sn_dat)
+
+norm_dat <- reshape2::melt(norm_dat)
+norm_dat$grp <- as.character(norm_dat$grp)
+#norm_dat$grp[grep(pattern = "d13", x = norm_dat$sn)] <- "d13_Naive-to-Primed"
+
+head(norm_dat)
+
+### heatmap each dmr
+library(dplyr)
+hm_dat <- norm_dat[norm_dat$variable %in% 11:20, ]
+hm_dat$grp <- as.character(hm_dat$grp)
+
+head(hm_dat)
+table(hm_dat$grp)
+
+#hm_dat$grp[grep(pattern = "d13", x = hm_dat$sn)] <- "d13_Naive-to-Primed"
+#hm_dat$class <- str_c(hm_dat$grp, hm_dat$media, sep = "_")
+head(hm_dat)
+
+hm_dat <- hm_dat[ ,c(2:4, 6:7)] %>% group_by(loci, sn) %>%
+    summarise(mean=mean(value, na.rm=TRUE))
+library(tidyr)
+hm_dat <- hm_dat %>% spread(sn, mean) %>% data.frame()
+rownames(hm_dat) <- hm_dat$loci
+hm_dat$loci <- NULL
+```
+
+
+```{r, cache=TRUE}
+pheatmap(hm_dat, border_color = NA)
+
+pdf(file = "wgbs/plots/CH_DMR_mCA_flank_norm_heatmap.pdf", width = 2.5, height = 4)
+pheatmap(hm_dat,
+         border_color = NA, show_rownames = FALSE)
+dev.off()
+```
+
+
+```{r, cache=TRUE}
+primed_ca_means <- rowMeans(hm_dat[ ,c("Primed.hiPSC.MEL1.r1", "Primed.hiPSC.MEL1.r2")])
+esc_ca_means <- rowMeans(hm_dat[ ,c("hESC.MEL1.r1", "hESC.MEL1.r2")])
+
+up <- rownames(hm_dat)[primed_ca_means < esc_ca_means]
+
+head(norm_dat)
+norm_dat$up <- norm_dat$loci %in% up
+
+line_mm <- 0.5 / 2.835
+
+norm_dat <- norm_dat[!norm_dat$grp %in% c("Naive", "HDF"), ]
+
+norm_dat$grp <- factor(norm_dat$grp, levels=rev(c("Primed-hiPSC", "TNT-hiPSC",
+                                                  "NtP-hiPSC", "hESC")))
+
+#barplot(c(1,1,1,1,1,1), col=vitC); barplot(c(1,1,1,1,1), col=reprog_pal)
+pal <- rev(c(reprog_pal[c(1)], vitC[c(6,2)], reprog_pal[4]))
+
+gg_mch <- ggplot(data = norm_dat, mapping = aes(x = variable, y = value,
+                                                group=grp, col=grp, fill=grp)) +
+    stat_summary(geom = "line", na.rm = TRUE, size=0.5, alpha = 0.7) +
+    #geom_smooth(na.rm = TRUE, span = 0.25) +
+    #stat_summary(geom = 'ribbon', fun.data = mean_se, alpha=0.2, col=NA, na.rm=TRUE) +
+    #scale_fill_manual(values = pal) +
+    #scale_color_manual(values = pal) +
+    scale_color_colorblind() +
+    facet_grid(up~., scales = "free_y") +
+    ylab("Normalised mCA/CA") +
+    xlab("") +
+    geom_vline(xintercept = c(11,20), linetype="dashed", size=line_mm) +
+    theme_bw() +
+    theme(plot.background = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.border = element_blank(),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          legend.position = "right",
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.text.y = element_text(color = 'black'),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.y = element_line(color = 'black', size = line_mm),
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+
+
+pdf("manuscript_figure_plots/MEL1_mch_dmr_summary_plot.pdf")
+gg_mch
+dev.off()
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4e")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4e",
+                    x = gg_mch$data[gg_mch$data$up == TRUE, ])
+
+wb_ed_fig7 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig7, sheetName = "ED_Fig_7i")
+openxlsx::writeData(wb = wb_fig4, sheet = "ED_Fig_7i",
+                    x = gg_mch$data[gg_mch$data$up == FALSE, ])
 
 ```
 
