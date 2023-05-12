@@ -15,8 +15,7 @@ source("R/project_functions.R")
 ########################
 # PCA plots ---------------------------------------------------------------
 ########################
-mat = dat_norm$E[!is_te, ]
-mdat = mdat_rna
+
 
 plot_pca_2 <- function(mat, mdat, scale=FALSE){
     
@@ -1238,7 +1237,7 @@ icr_means_melt$id <- str_c(icr_means_melt$variable, icr_means_melt$gene_id, sep 
 icr_merge_df <- merge.data.frame(icr_merge_df, icr_means_melt, by = "id", all = FALSE)
 
 
-gg_icr_diff_x_y$contrast <- factor(icr_merge_df$contrast, levels=c("Primed", "TNT", "NtP"))
+#gg_icr_diff_x_y$contrast <- factor(icr_merge_df$contrast, levels=c("Primed", "TNT", "NtP"))
 
 gg_icr_diff_x_y <- ggplot(icr_merge_df, aes(x = -logFC, y = mCG_delta, colour=significant)) +
     geom_point(alpha=0.5) + facet_grid(.~contrast) + 

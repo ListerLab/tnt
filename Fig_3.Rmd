@@ -1939,6 +1939,20 @@ openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6d",
                     x = chrX_pro_source_dat)
 ```
 
+```{r, cache=TRUE}
+type_32F <- readRDS("~/Downloads/drive-download-20230512T033020Z-001/32F_celltype.rds")
+type_32F
+```
+
+
+```{r, cache=TRUE}
+treat_32F <- readRDS("~/Downloads/drive-download-20230512T033020Z-001/32F_treatment.rds")
+
+cowplot::plot_grid(type_32F, type_32F, nrow = 1, ncol = 2)
+
+```
+
+
 Close out source data files
 ```{r}
 openxlsx::saveWorkbook(wb = wb_fig3,
