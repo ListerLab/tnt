@@ -419,22 +419,21 @@ pdf("manuscript_figure_plots/all_MEL1_assay_pca.pdf", height = 5, width = 3)
 cp
 dev.off()
 
+cp
 ```
 
 
-
 ## CG DMRs
-```{r}
+```{r, cache=TRUE}
 ### CG-DMR plots
 
 # Read the DMR files and filter
 dmr_fls <- list.files(path = "wgbs/dmrs/MEL1_dmrs/dmr_out", full.names = TRUE)
 
 ### Load the meta-data
-mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_paths_peb_servers.csv")
-mdat_wgbs <- mdat_wgbs[mdat_wgbs$donor == "MEL1", ]
-mdat_wgbs$CG_bsobj_local <- str_c("wgbs/CG_bsobj/", basename(mdat_wgbs$CG_bsobj))
-lapply(mdat_wgbs$CG_bsobj_local, file.exists)
+mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_metadata_local.csv")
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$Background == "MEL1", ]
+stopifnot(all(file.exists(mdat_wgbs$BSseq_CG)))
 
 read_dmr <- function(dmr_rds){
     
@@ -449,10 +448,10 @@ read_dmr <- function(dmr_rds){
     g1_libs <- dmr$manifest_data$id[dmr$manifest_data$group %in% groups[1]]
     g2_libs <- dmr$manifest_data$id[dmr$manifest_data$group %in% groups[2]]
     
-    g1_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local[mdat_wgbs$library %in% g1_libs], 
-                             gr=dmr_gr)
-    g2_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local[mdat_wgbs$library %in% g2_libs], 
-                             gr=dmr_gr)
+    g1_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$BSseq_CG[mdat_wgbs$Library_id %in% g1_libs], 
+                             gr=dmr_gr, cores = 2)
+    g2_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$BSseq_CG[mdat_wgbs$Library_id %in% g2_libs], 
+                             gr=dmr_gr, cores = 2)
     delta_mCG <- rowMeans(g2_mCG)  - rowMeans(g1_mCG)
     
     dmr_gr$delta <- delta_mCG
@@ -498,22 +497,27 @@ gg_dmr <- ggplot(dmr_df, aes(x = group, y = value, fill=group)) +
     scale_fill_manual(values = reprog_pal2) +
     ylab("DMR count") + 
     sams_pub_theme()
+
+gg_dmr
+```
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_dmr")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_dmr",
+                    x = gg_dmr$data)
 ```
 
 Write filtered DMRs to xlsx for supplementary data tables.
-```{r}
-library(openxlsx)
-
+```{r, cache=TRUE}
 dmr_df_list <- lapply(dmr_filt, as.data.frame)
 
 write.xlsx(x = dmr_df_list, file = "supplementary_tables/MEL1_CG_DMR_results.xlsx",
-           append=TRUE, row.names=FALSE, sheetName=names(dmr_grl))
+           append=TRUE, rowNames=FALSE, sheetName=names(dmr_grl))
 ```
 
 
-
 Get the DMRs for enrichment testing
-```{r}
+```{r, cache=TRUE}
 dmr_primed <- dmr_filt[[2]]
 dmr_tnt <- dmr_filt[[3]]
 
@@ -525,7 +529,7 @@ dmr_primed_down_corrected <- dmr_primed_down[!overlapsAny(dmr_primed_down, dmr_t
 ```
 
 Write the bed files
-```{r}
+```{r, cache=TRUE}
 gr_to_bed(gr = dmr_primed_up,
           out_path = "wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed")
 
@@ -542,9 +546,7 @@ gr_to_bed(gr = dmr_primed_down_corrected,
 
 
 ### ATAC peaks
-
-```{r}
-
+```{r, cache=TRUE}
 atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
 atac_tt <- atac_tt[atac_tt$significant == TRUE, ]
 
@@ -561,10 +563,19 @@ gg_atac <- ggplot(atac_df, aes(x = group, y = n, fill=group)) +
     ylab("Differential ATAC peaks") + 
     scale_fill_manual(values = reprog_pal2) +
     sams_pub_theme()
+
+gg_atac
+```
+
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_atac")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_atac",
+                    x = gg_atac$data)
 ```
 
 Write the bed files
-```{r}
+```{r, cache=TRUE}
 atac_up <- atac_tt$loci[atac_tt$significant == TRUE &
                      atac_tt$contrast == "groupPrimed" &
                      atac_tt$direction == "Up"]
@@ -585,10 +596,8 @@ gr_to_bed(gr = atac_down_gr,
 
 ```
 
-
-
 ### Gene expression
-```{r}
+```{r, cache=TRUE}
 txdb <- makeTxDbFromGFF(file = "resources/genes.gtf.gz", format = "gtf")
 genes_gr <- genes(txdb) 
 genes_chrY <- genes_gr[seqnames(genes_gr) == "chrY"]
@@ -636,8 +645,15 @@ gg_gene
 
 ```
 
-Make bed files
 ```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_gene")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_gene",
+                    x = gg_gene$data)
+```
+
+
+Make bed files
+```{r, cache=TRUE}
 gene_down <- gene_df$gene_id[gene_df$contrast == "Primed" &
                                  gene_df$significant == TRUE &
                                  gene_df$direction == "Down"]
@@ -646,10 +662,10 @@ gene_up <- gene_df$gene_id[gene_df$contrast == "Primed" &
                                  gene_df$significant == TRUE &
                                  gene_df$direction == "Up"]
 
-gene_down_gr <- gene_gr[gene_gr$gene_id %in% gene_down] %>%
+gene_down_gr <- genes_gr[genes_gr$gene_id %in% gene_down] %>%
     resize(width = 2000, fix = "start")
 
-gene_up_gr <- gene_gr[gene_gr$gene_id %in% gene_up] %>%
+gene_up_gr <- genes_gr[genes_gr$gene_id %in% gene_up] %>%
     resize(width = 2000, fix = "start")
 
 gr_to_bed(gene_up_gr, "RNAseq/processed_data/MEL1_primed_up_genes.bed")
@@ -658,7 +674,7 @@ gr_to_bed(gene_down_gr, "RNAseq/processed_data/MEL1_primed_down_genes.bed")
 
 
 ### TE expression
-```{r}
+```{r, cache=TRUE}
 # Get the TE data, select for corrected and uncorrected TE's and make bed files for enrichment tests
 te_de_dat <- read.table(file = "RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
 te_de_dat <- te_de_dat[te_de_dat$significant == "Significant", ]
@@ -681,11 +697,16 @@ gg_te <- ggplot(te_df, aes(x = contrast, y = n, fill=contrast)) +
     facet_grid(.~Direction) +
     ylab("Differential TE's") + 
     sams_pub_theme()
-
+gg_te
 ```
 
-
 ```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5d_te")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5d_te",
+                    x = gg_te$data)
+```
+
+```{r, cache=TRUE}
 # Get the TE data, select for corrected and uncorrected TE's and make bed files for enrichment tests
 
 te_tnt_gr <- te_de_dat[te_de_dat$significant == "Significant" &
@@ -706,11 +727,11 @@ gr_to_bed(te_primed_down_gr, out_path = "RNAseq/processed_data/MEL1_primed_down_
 
 
 ### Combine bar plots
-```{r}
+```{r, cache=TRUE}
 cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 1, align = "h")
 ```
 
-```{r}
+```{r, cache=TRUE}
 pdf("manuscript_figure_plots/MEL1_figure_4_differential_feature_barplots.pdf",
     height = 1.5, width = 5)
 cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 1, align = "h")
@@ -718,7 +739,7 @@ dev.off()
 ```
 
 
-```{r}
+```{r, cache=TRUE}
 pdf("manuscript_figure_plots/MEL1_figure_4_differential_feature_barplots_vertical.pdf",
     height = 5, width = 1.3)
 cowplot::plot_grid(gg_dmr, gg_gene, gg_te, gg_atac, nrow = 4, align = "h")
@@ -728,7 +749,7 @@ dev.off()
 ## Perform enrichment tests
 
 List of bed files
-```{r}
+```{r, cache=TRUE}
 bed_list <- c("wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed",
 "wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_corrected.bed",
 "wgbs/processed_data/MEL1_primed_CG_dmrs_hypo_all.bed",
@@ -741,7 +762,7 @@ bed_list <- c("wgbs/processed_data/MEL1_primed_CG_dmrs_hyper_all.bed",
 "RNAseq/processed_data/MEL1_primed_down_te.bed")
 ```
 
-Run the enrichment tests (on server)
+Run the enrichment tests (on server, not run locally)
 ```{r, eval=FALSE}
 
 library(regioneR)
@@ -829,7 +850,7 @@ mclapply(X = bed_list, FUN = test_bed_list, mc.cores = 2)
 ```
 
 ### Upset plot of all DE elements
-```{r}
+```{r, cache=TRUE}
 
 library(readxl)
 CH_dat <- read_excel(path = "resources/nature13551-s3.xlsx")
@@ -892,8 +913,8 @@ hits[hits$all_differential_peaks_primed_up == 1 &
 ```
 
 
-Load the enrichment data
-```{r}
+Load the enrichment data and plot
+```{r, cache=TRUE}
 enrich_rds_list <- c(list.files(path = "element_enrichments/",
                                 pattern = "_element_enrichments.Rds",
                                 full.names = TRUE))
@@ -980,9 +1001,11 @@ gg_enrich_bar <- ggplot(enrich_dat, aes(y = feature, x=z_score)) +
     facet_wrap(facets = element~., ncol = 2, drop = TRUE, scales = "free") + 
     sams_pub_theme(legend_pos = "right")
 gg_enrich_bar
+```
 
 
-# Put limit z-scores for colours on heatmap
+```{r, cache=TRUE}
+# Put limit z-scores (trim extreme values) for colours on heatmap so visualisation is clearer. 
 enrich_dat$z_score %>% summary()
 enrich_dat$z_score[enrich_dat$z_score > 5] <- 5
 enrich_dat$z_score[enrich_dat$z_score < -5] <- -5
@@ -997,18 +1020,22 @@ gg_enrich <- ggplot(enrich_dat[!grepl("_corrected", enrich_dat$feature), ],
     facet_grid(class~element_class, space = "free", drop = TRUE, scales = "free") + 
     sams_pub_theme(legend_pos = "right") +
     xlab("") + ylab("")
-gg_enrich
 
 pdf("manuscript_figure_plots/MEL1_feature_enrichments_heatmap.pdf", width = 4, height = 3)
 gg_enrich
 dev.off()
 
-
+gg_enrich
 ```
 
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5f")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5f",
+                    x = gg_enrich$data)
+```
 
 ## Volcano and MA plots of differential ATAC peaks
-```{r}
+```{r, cache=TRUE}
 atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
 atac_tt <- atac_tt[order(atac_tt$FDR, decreasing = TRUE), ]
 atac_tt$contrast <- str_remove(string = atac_tt$contrast, pattern = "group")
@@ -1027,10 +1054,19 @@ gg_ma_atac <- ggplot(atac_tt, aes(x = logCPM, y=logFC, fill=significant, colour=
 png("manuscript_figure_plots/MEL1_atac_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
 gg_ma_atac
 dev.off()
+
+gg_ma_atac
+```
+
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_atac")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_atac",
+                    x = gg_enrich$data)
 ```
 
 ## Volcano and MA plots of differential genes
-```{r}
+```{r, cache=TRUE}
 
 gene_df <- gene_df[order(gene_df$PValue, decreasing = TRUE), ]
 
@@ -1050,12 +1086,22 @@ gg_ma_gene <- ggplot(gene_df, aes(x = logCPM, y=-logFC, fill=significant, colour
 png("manuscript_figure_plots/MEL1_gene_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
 gg_ma_gene
 dev.off()
+
+gg_ma_gene
 ```
+
+
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_gene")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_gene",
+                    x = gg_enrich$data)
+```
+
 
 ## Plots for imprinted genes
 
 Plot mCG in ICRs
-```{r}
+```{r, cache=TRUE}
 library(readxl)
 icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
 
@@ -1093,7 +1139,7 @@ colnames(annot_row) <- c("Methylated allele", "Category")
 #annot_col$Sample <- factor(annot_col$Sample)
 #annot_col$State <- factor(annot_col$State)
 
-icr_matrix <- make_mC_matrix(obj_fls = mdat_wgbs$CG_bsobj_local, gr = icr_gr)
+icr_matrix <- make_mC_matrix(obj_fls = mdat_wgbs$BSseq_CG, gr = icr_gr)
 rownames(icr_matrix) <- icr_gr$Name %>% makeUnique()
 #annot_row <- icrs[ ,c(5,13)] %>% data.frame()
 
@@ -1104,19 +1150,17 @@ hm <- pheatmap(icr_matrix, clustering_distance_cols = "correlation",
          fontsize = 5, main="Imprint control regions",
          annotation_row = annot_row)
 
-pdf("methylCseq/plots/MEL1_germline_ICR_methylation_heatmap.pdf", width = 5, height = 6)
+pdf("wgbs/plots/MEL1_germline_ICR_methylation_heatmap.pdf", width = 5, height = 6)
 pheatmap(icr_matrix,
                show_rownames = TRUE, border_color = NA,
          fontsize = 5, main="Imprint control regions",
          annotation_row = annot_row)
 dev.off()
-
-
 ```
 
 
 
-```{r}
+```{r, cache=TRUE}
 library(readxl)
 icrs <- readxl::read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
 
@@ -1144,16 +1188,16 @@ gg_imprint_points <- ggplot(gene_df_imprint, aes(x = contrast, y = -logFC, colou
 ```
 
 Plot mCG change with expression change of ICRs and genes
-```{r}
+```{r, cache=TRUE}
 
 ind <- match(gene_df_imprint$gene_id, rownames(icr_matrix))
 
-group_ids <- unique(mdat_wgbs$group)
+group_ids <- unique(mdat_wgbs$Group)
 
 get_icr_means <- function(group){
     
     message(group)
-    dat <- icr_matrix[ ,mdat_wgbs$group == group] %>% data.frame()
+    dat <- icr_matrix[ ,mdat_wgbs$Group == group] %>% data.frame()
     means <- NA
     if (ncol(dat) > 1){
         means <- rowMeans(dat, na.rm = TRUE)
@@ -1171,18 +1215,19 @@ icr_means <- lapply(group_ids, get_icr_means) %>% do.call(cbind, .)
 
 calc_icr_delta <- function(group){
     
-    dat <- icr_means[ ,group] - icr_means[ ,"ESC"] %>% as.numeric()
+    dat <- icr_means[ ,group] - icr_means[ ,"hESC"] %>% as.numeric()
     dat <- data.frame(Group=group, mCG_delta=dat, Gene=rownames(icr_means))
     
 }
 
-icr_delta_dat <- lapply(c("Primed", "TNT", "NtP"), calc_icr_delta) %>%
+icr_delta_dat <- lapply(c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC"), calc_icr_delta) %>%
     do.call(rbind, .)
 
 icr_delta_dat <- icr_delta_dat[icr_delta_dat$Gene %in% gene_df_imprint$gene_id, ]
 icr_delta_dat$id <- str_c(icr_delta_dat$Group, icr_delta_dat$Gene, sep = "_")
 
-gene_df_imprint$id <- str_c(gene_df_imprint$contrast, gene_df_imprint$gene_id, sep = "_")
+gene_df_imprint$id <- str_c(gene_df_imprint$contrast,"-hiPSC_",
+                            gene_df_imprint$gene_id)
 
 icr_merge_df <- merge.data.frame(gene_df_imprint, icr_delta_dat, by = "id", all = FALSE)
 
@@ -1193,7 +1238,7 @@ icr_means_melt$id <- str_c(icr_means_melt$variable, icr_means_melt$gene_id, sep 
 icr_merge_df <- merge.data.frame(icr_merge_df, icr_means_melt, by = "id", all = FALSE)
 
 
-icr_merge_df$contrast <- factor(icr_merge_df$contrast, levels=c("Primed", "TNT", "NtP"))
+gg_icr_diff_x_y$contrast <- factor(icr_merge_df$contrast, levels=c("Primed", "TNT", "NtP"))
 
 gg_icr_diff_x_y <- ggplot(icr_merge_df, aes(x = -logFC, y = mCG_delta, colour=significant)) +
     geom_point(alpha=0.5) + facet_grid(.~contrast) + 
@@ -1222,12 +1267,19 @@ dev.off()
 #     sams_pub_theme(x.text.angle = 0)
 # 
 # 
+gg_icr_diff_x_y
+```
 
+```{r}
+wb_ed_fig9 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb = wb_ed_fig9, sheetName = "ED_Fig_9f")
+openxlsx::writeData(wb = wb_ed_fig9, sheet = "ED_Fig_9f",
+                    x = gg_icr_diff_x_y$data)
 ```
 
 
 Cluster imprinted genes by expression
-```{r}
+```{r, cache=TRUE}
 # Load the RNA metadata
 mdat_rna <- fread("RNAseq/polyA_RNAseq_sample_table.csv")
 mdat_rna$model_group <- str_c(mdat_rna$Group, mdat_rna$Donor, sep = "_")
@@ -1241,6 +1293,7 @@ dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>%
 libs <- colnames(dat2) %>%
     str_remove("X.home.sbuckberry.working_data_02.polo_project.human_ips.RNAseq.polyA.aligned_data.") %>% str_sub(start = 1, end = 6)
 colnames(dat2) <- libs
+
 
 # Match the metadata with the count data
 ind <- match(colnames(dat2), mdat_rna$Library)
@@ -1261,9 +1314,14 @@ dev.off()
 
 ```
 
-
-## Volcano and MA plots of differential TE's
 ```{r}
+openxlsx::addWorksheet(wb = wb_ed_fig9, sheetName = "ED_Fig_9e")
+openxlsx::writeData(wb = wb_ed_fig9, sheet = "ED_Fig_9e",
+                    x = imprint_cpm)
+```
+
+Volcano and MA plots of differential TE's
+```{r, cache=TRUE}
 
 te_de_dat <- read.table(file = "RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
 
@@ -1287,140 +1345,35 @@ png("manuscript_figure_plots/MEL1_te_ma_plots.png", width = 4.5, height = 1.3, u
 gg_ma_te
 dev.off()
 
+gg_ma_te
+```
 
+```{r}
+openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_te")
+openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_te",
+                    x = gg_ma_te$data)
 ```
 
 
-
-
-## Motif analysis of differential atac peaks
-```{r}
+Motif analysis of differential atac peaks. Bash, run remotely
+```{r, eval=FALSE}
 parallel -j2 findMotifsGenome.pl {} hg19 {.}homer/ -size given -p 20 ::: /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed*.bed
-
-
 ```
-
-## Footprinting of differential ATAC peaks
-### Run on server
-
-### Get BED files for enriched motifs
-
-Interset motif beds with DE peaks
-```{bash}
-bedtools intersect -wa \
--a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_all.bed \
--b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_down.bed \
-> /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed
-
-bedtools intersect -wa \
--a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/KLF4_MA0039.4/beds/KLF4_MA0039.4_all.bed \
--b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
-> /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4_all.bed
-
-bedtools intersect -wa \
--a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/CTCF_MA0139.1/beds/CTCF_MA0139.1_all.bed \
--b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
-> /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_CTCF_MA0139.1_all.bed
-
-
-bedtools intersect -wa \
--a /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/NFYA_MA0060.3/beds/NFYA_MA0060.3_all.bed \
--b /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed \
-> /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_NFYA_MA0060.3_all.bed
-
-
-/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed
-```
-
-
-Plot footprints
-```{r}
-
-cd /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/
-
-TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 500 \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_flank_500.pdf
-
-TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 100 \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_MA1115_1_all.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_down_POU5F1_flank_100.pdf
-
-
-TOBIAS PlotAggregate --plot_boundaries --share-y signals --flank 30 \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4_all.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_KLF4_MA0039_4.pdf
-
-TOBIAS PlotAggregate --plot_boundaries --share-y both --flank 150 \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_CTCF_MA0139.1_all.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_peaks_primed_up_CTCF_MA0139.pdf
-
-
-TOBIAS PlotAggregate --plot_boundaries --share-y both \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up_NFYA_MA0060.3_all.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/all_differential_peaks_primed_up_NFYA_MA0060.3_all.pdf
-
-git add /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/*.pdf && git commit -m 'plot updates' && git pull && git push
-```
-
-
-```{r}
-
-TOBIAS PlotAggregate --share_y both --plot_boundaries --signal-on-x \
---TFBS /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed \
---signals PSC_ESC_all_merge_corrected_footprints.bw \
-PSC_Primed_all_merge_corrected_footprints.bw \
-PSC_TNT_all_merge_corrected_footprints.bw \
-PSC_NtP_all_merge_corrected_footprints.bw \
---signal-labels ESC Primed TNT NtP \
---output /home/sbuckberry/working_data_04/hs-reprogram/atac/tobias_out/differential_esc_bound_POU5F1.pdf
-
-
-/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/ESC_vs_Primed/POU5F1_MA1115.1/beds/POU5F1_MA1115.1_ESC_bound.bed
-```
-
-
-
 
 Plot mCG in ICRs
-```{r}
+```{r, cache=TRUE}
 icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
 
 icr_gr <- GRanges(seqnames = icrs$Chromosome, IRanges(start = icrs$Start, end = icrs$End))
 mcols(icr_gr) <- icrs
 
-mdat_wgbs <- read.csv("wgbs/metadata/wgbs_paths_peb_servers.csv")
-mdat_wgbs_MEL1 <- mdat_wgbs[mdat_wgbs$donor == "MEL1", ] 
+mdat_wgbs <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+mdat_wgbs_MEL1 <- mdat_wgbs[mdat_wgbs$Background == "MEL1", ] 
 
-CG_obj_list <- list.files(path = "wgbs/CG_bsobj/", full.names = TRUE)
-CG_obj_list <- CG_obj_list[basename(CG_obj_list) %in% basename(mdat_wgbs_MEL1$CG_bsobj)]
+#CG_obj_list <- list.files(path = "wgbs/CG_bsobj/", full.names = TRUE)
+#CG_obj_list <- CG_obj_list[basename(CG_obj_list) %in% basename(mdat_wgbs_MEL1$CG_bsobj)]
 
-stopifnot(all(basename(CG_obj_list) == basename(mdat_wgbs_MEL1$CG_bsobj)))
+#stopifnot(all(basename(CG_obj_list) == basename(mdat_wgbs_MEL1$CG_bsobj)))
 
 annot_col <- data.frame(Group=mdat_wgbs_MEL1$group)
 rownames(annot_col) <- mdat_wgbs_MEL1$label
@@ -1430,7 +1383,8 @@ rownames(annot_row) <- icrs$Name %>% makeUnique()
 annot_row$Categoly[grepl("Secondary", annot_row$Categoly)] <- "Secondary-DMR"
 colnames(annot_row) <- c("Methylated allele", "Category")
 
-icr_matrix <- make_mC_matrix(obj_fls = CG_obj_list, gr = icr_gr, cores = 3)
+icr_matrix <- make_mC_matrix(obj_fls = mdat_wgbs_MEL1$BSseq_CG,
+                             gr = icr_gr, cores = 3)
 icr_matrix <- data.frame(icr_matrix)
 rownames(icr_matrix) <- icr_gr$Name %>% makeUnique()
 #annot_row <- icrs[ ,c(5,13)] %>% data.frame()
@@ -1439,10 +1393,6 @@ colnames(icr_matrix) <- mdat_wgbs_MEL1$label
 
 icr_matrix <- icr_matrix[!grepl(pattern = "Placenta", x = icr_gr$Categoly, ignore.case = TRUE), ]
 
-hm <- pheatmap(icr_matrix,
-               show_rownames = TRUE, border_color = NA,
-         fontsize = 5, main="Imprint control regions",
-         annotation_row = annot_row)
 
 pdf("manuscript_figure_plots/MEL1_germline_ICR_methylation_heatmap.pdf", width = 4, height = 5)
 pheatmap(icr_matrix, clustering_distance_cols = "correlation",
@@ -1451,8 +1401,18 @@ pheatmap(icr_matrix, clustering_distance_cols = "correlation",
          annotation_row = annot_row)
 dev.off()
 
+pheatmap(icr_matrix, clustering_distance_cols = "correlation",
+               show_rownames = TRUE, border_color = NA,
+         fontsize = 5, main="Imprint control regions",
+         annotation_row = annot_row)
 
 ```
 
+```{r}
+openxlsx::addWorksheet(wb_ed_fig9, sheetName = "Fig_9d")
+openxlsx::writeData(wb = wb_ed_fig9, sheet = "Fig_9d",
+                    x = icr_matrix)
+
+```
 
 
