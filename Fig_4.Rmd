@@ -546,7 +546,7 @@ gr_to_bed(gr = dmr_primed_down_corrected,
 
 ### ATAC peaks
 ```{r, cache=TRUE}
-atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
+atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt.gz")
 atac_tt <- atac_tt[atac_tt$significant == TRUE, ]
 
 atac_df <- data.frame(group=atac_tt$contrast, direction=atac_tt$direction)
@@ -1035,7 +1035,7 @@ openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4f",
 
 ## Volcano and MA plots of differential ATAC peaks
 ```{r, cache=TRUE}
-atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
+atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt.gz")
 atac_tt <- atac_tt[order(atac_tt$FDR, decreasing = TRUE), ]
 atac_tt$contrast <- str_remove(string = atac_tt$contrast, pattern = "group")
 atac_tt$contrast <- factor(atac_tt$contrast, levels = c("Primed", "TNT", "NtP"))
@@ -1061,7 +1061,9 @@ gg_ma_atac
 ```{r}
 openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4c_atac")
 openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4c_atac",
-                    x = gg_enrich$data)
+                    x = atac_tt)
+
+
 ```
 
 ## Volcano and MA plots of differential genes
@@ -1270,10 +1272,12 @@ gg_icr_diff_x_y
 ```
 
 ```{r}
-wb_ed_fig9 <- openxlsx::createWorkbook()
-openxlsx::addWorksheet(wb = wb_ed_fig9, sheetName = "ED_Fig_9f")
-openxlsx::writeData(wb = wb_ed_fig9, sheet = "ED_Fig_9f",
+wb_ed_fig8f <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb = wb_ed_fig8f, sheetName = "ED_Fig_8f")
+openxlsx::writeData(wb = wb_ed_fig8f, sheet = "ED_Fig_8f",
                     x = gg_icr_diff_x_y$data)
+openxlsx::saveWorkbook(wb = wb_ed_fig8f,
+                       file = "ED_Figure_8f_source_data.xlsx", overwrite = TRUE)
 ```
 
 
@@ -1314,6 +1318,18 @@ dev.off()
 ```
 
 ```{r}
+wb_ed_fig8e <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig8e, sheetName = "ED_Fig_8e")
+openxlsx::writeData(wb = wb_ed_fig8e, sheet = "ED_Fig_8e",
+                    x = imprint_cpm)
+openxlsx::saveWorkbook(wb = wb_ed_fig8e,
+                       file = "ED_Figure_8e_source_data.xlsx", overwrite = TRUE)
+```
+
+
+
+
+```{r}
 openxlsx::addWorksheet(wb = wb_ed_fig9, sheetName = "ED_Fig_9e")
 openxlsx::writeData(wb = wb_ed_fig9, sheet = "ED_Fig_9e",
                     x = imprint_cpm)
@@ -1348,8 +1364,8 @@ gg_ma_te
 ```
 
 ```{r}
-openxlsx::addWorksheet(wb_fig5, sheetName = "Fig_5c_te")
-openxlsx::writeData(wb = wb_fig5, sheet = "Fig_5c_te",
+openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4c_te")
+openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4c_te",
                     x = gg_ma_te$data)
 ```
 
@@ -1561,6 +1577,7 @@ gg_mch
 dev.off()
 ```
 
+
 ```{r}
 openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4e")
 openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4e",
@@ -1568,9 +1585,197 @@ openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4e",
 
 wb_ed_fig7 <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb_ed_fig7, sheetName = "ED_Fig_7i")
-openxlsx::writeData(wb = wb_fig4, sheet = "ED_Fig_7i",
+
+openxlsx::writeData(wb = wb_ed_fig7, sheet = "ED_Fig_7i",
                     x = gg_mch$data[gg_mch$data$up == FALSE, ])
 
 ```
 
+
+```{r}
+openxlsx::saveWorkbook(wb = wb_fig4,
+                       file = "Figure_4_source_data.xlsx", overwrite = TRUE)
+```
+
+
+```{r}
+########################
+# CG DMR plots ---------------------------------------------------------------
+########################
+
+### CG-DMR plots
+
+# Read the DMR files and filter
+dmr_fls <- list.files(path = "wgbs/dmrs/MEL1_dmrs/dmr_out", full.names = TRUE)
+
+### Load the meta-data
+mdat_wgbs <- read.csv(file = "wgbs/metadata/wgbs_metadata_local.csv")
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$Background == "MEL1", ]
+mdat_wgbs <- mdat_wgbs[mdat_wgbs$Library_id != "RL2352_merge", ]
+lapply(mdat_wgbs$BSseq_CG, file.exists)
+
+# Load and filter DMRs
+dmr_grl <- lapply(dmr_fls, read_dmr)
+
+names(dmr_grl) <- basename(dmr_fls) %>% str_remove(pattern = "_dmrseq_dmrs.Rds")
+
+dmr_filt <- lapply(1:3, filter_dmr)
+
+dmr_union <- GRangesList(dmr_filt) %>% unlist() %>% reduce()
+
+dmr_union_mCG <- make_mC_matrix(obj_fls = mdat_wgbs$BSseq_CG,
+                                gr = dmr_union, cores = 3)
+
+colnames(dmr_union_mCG) <- mdat_wgbs$Library_id
+write.table(x = dmr_union_mCG, file = "wgbs/processed_data/mel1_dmr_union_mCG.txt")
+```
+
+
+
+```{r}
+esc_means <- rowMeans(dmr_union_mCG[ ,mdat_wgbs$Group == "hESC"], na.rm = TRUE)
+primed_means <- rowMeans(dmr_union_mCG[ ,mdat_wgbs$Group %in% c("PrimedPrimed-hiPSC",
+                                                                "TNT-hiPSC",
+                                                                "NtP-hiPSC")], na.rm = TRUE)
+delta_means <- primed_means - esc_means
+tnt_means <- rowMeans(dmr_union_mCG[ ,mdat_wgbs$group == "TNT-hiPSC"])
+hm_order <- order(delta_means)
+
+#dmr_union_mCG <- dmr_union_mCG[complete.cases(dmr_union_mCG), ]
+
+dmr_union$primed_delta <- as.numeric(delta_means)
+
+pheatmap(dmr_union_mCG, show_rownames = FALSE)
+
+png("wgbs/plots/mCG_dmr_heatmap_MEL1.png", height = 3, width = 2, units = "in", res = 300)
+pheatmap(dmr_union_mCG[hm_order, -c(1, 7)],
+         show_rownames = FALSE, cluster_rows = FALSE)
+dev.off()
+```
+
+
+```{r}
+wb_ed_fig6 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig6, sheetName = "ED_Fig_6e")
+openxlsx::writeData(wb = wb_ed_fig6, sheet = "ED_Fig_6e",
+                    x = dmr_union_mCG[hm_order, -c(1, 7)])
+
+```
+
+
+```{r, eval=FALSE}
+# Upset plot of DMRs
+hits <- lapply(dmr_filt, function(x){overlapsAny(dmr_union, x)}) %>%
+    do.call(cbind, .) %>% data.frame()
+colnames(hits) <- names(dmr_grl)
+hits <- hits + 0
+
+pdf("manuscript_figure_plots/mCG_dmrseq_dmr_upset.pdf", width = 3, height = 2.5)
+UpSetR::upset(hits, order.by = "freq")
+dev.off()
+```
+
+
+```{r, eval=FALSE}
+## Compare to other DMRs
+dmr_filt_list <- readRDS("wgbs/processed_data/all_cg_dmr_filt_list.Rds")
+
+"wgbs/processed_data/all_cg_dmr_filt_list.Rds"
+
+primed_dmrs <- dmr_filt[[2]]
+mcols(primed_dmrs) <- NULL
+
+dmr_union2 <- c(primed_dmrs, dmr_filt_list[[1]], dmr_filt_list[[2]], dmr_filt_list[[3]]) %>% reduce()
+
+# Upset plot of DMRs
+hits2 <- lapply(c(list(dmr_union), dmr_filt_list[1:3]), function(x){overlapsAny(dmr_union2, x)}) %>%
+    do.call(cbind, .) %>% data.frame()
+colnames(hits2)[1] <- "Isogenic union DMRs (MEL1)"
+hits2 <- hits2 + 0
+
+head(hits2)
+
+pdf("manuscript_figure_plots/MEL1_mCG_dmrseq_dmr_comparison_upset.pdf",
+    width = 6, height = 3)
+UpSetR::upset(hits2, order.by = "freq")
+dev.off()
+```
+
+
+```{r, eval=FALSE}
+# Plot DMR scatter
+esc_dmr_mCG <- dmr_union_mCG[ ,mdat_wgbs$Group == "hESC"] %>% rowMeans()
+hdf_dmr_mCG <- dmr_union_mCG[ ,mdat_wgbs$Group == "Fibroblast"]
+
+ips_ids <- c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC")
+
+delta_esc <- (dmr_union_mCG[ ,mdat_wgbs$Group %in% ips_ids] - esc_dmr_mCG) %>%
+    data.frame()
+delta_esc$delta <- "ESC"
+delta_esc$loci <- row.names(delta_esc)
+delta_esc <- reshape2::melt(delta_esc)
+
+delta_hdf <- (dmr_union_mCG[ ,mdat_wgbs$Group %in% ips_ids] - hdf_dmr_mCG) %>%
+    data.frame()
+delta_hdf$delta <- "Fibroblast"
+delta_hdf$loci <- row.names(delta_hdf)
+delta_hdf <- reshape2::melt(delta_hdf)
+
+all(delta_hdf$loci == delta_esc$loci)
+all(delta_hdf$variable == delta_esc$variable)
+
+mcg_delta_df <- data.frame(id=delta_esc$variable,
+                           hdf_delta=delta_hdf$value,
+                           esc_delta=delta_esc$value,
+                           loci=delta_esc$loci)
+
+#mcg_delta_df$id <- factor(mcg_delta_df$id, levels=mdat_wgbs$label[c(3, 9, 4, 10, 5 ,6)])
+
+mcg_delta_df$group <- mdat_wgbs$Group[match(mcg_delta_df$id, mdat_wgbs$Library_id)]
+
+
+gg_delta_hist <- ggplot(mcg_delta_df, aes(x = esc_delta, fill=group)) +
+    geom_histogram(bins = 50) +
+    scale_fill_manual(values = reprog_pal2) +
+    facet_wrap(id~., nrow = 3, scales = "free_y") +
+    geom_vline(xintercept = c(-0.2, 0.2), linetype="dashed") +
+    xlab("mCG DMR delta (iPSC - ESC)") +
+    ylab("CG DMR count") +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+pdf("manuscript_figure_plots/mCG_dmr_delta_histograms_MEL1.pdf",
+    width = 2.5, height = 3)
+gg_delta_hist
+dev.off()
+
+gg_delta <- ggplot(mcg_delta_df, aes(x = esc_delta, y = hdf_delta)) +
+    geom_point(size=0.5, alpha=0.1) +
+    facet_wrap(id~., nrow = 3) +
+    geom_vline(xintercept = c(-0.2, 0.2), linetype="dashed") +
+    geom_hline(yintercept = c(-0.2, 0.2), linetype="dashed") +
+    xlab("mCG ESC delta (iPSC - ESC)") +
+    ylab("mCG Fibroblast delta (iPSC - Fibroblast)") +
+    sams_pub_theme(x.text.angle = 0, hjust = 0.5)
+
+pdf("manuscript_figure_plots/mCG_dmr_delta_scatter_plots_MEL1.pdf",
+    width = 3, height = 3.5)
+gg_delta
+dev.off()
+
+dd_delta <- ggplot(mcg_delta_df, aes(x = esc_delta, y = hdf_delta)) +
+    geom_density_2d() +
+    facet_wrap(id~., nrow = 3) +
+    xlab("mCG difference (iPSC - ESC)") +
+    ylab("mCG difference (iPSC - Fibroblast)") +
+    sams_pub_theme()
+
+dd_delta <- ggplot(mcg_delta_df, aes(x = esc_delta, y = hdf_delta)) +
+    geom_density_2d() +
+    geom_point() +
+    facet_wrap(~id, nrow = 3)
+
+## Export DMRs
+saveRDS(dmr_filt, "wgbs/processed_data/MEL1_CG_DMRs_GRangesList.Rds")
+
+```
 

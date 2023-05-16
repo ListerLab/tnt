@@ -1,0 +1,1275 @@
+---
+title: "MEL1 ESC differentiation: Differential expression analysis of transposable elements"
+date: "`r Sys.Date()`"
+author: "Sam Buckberry"
+output: github_document
+---
+
+```{r setup, echo=FALSE, cache=FALSE, warning=FALSE}
+library(knitr)
+
+## Global options
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+```
+
+# Transposable element quantification
+
+Transposable element expression was quantified at a locus level using TElocal, from the TEtoolkit.
+https://github.com/mhammell-laboratory/TElocal
+
+TE quantification index for hg19 for TElocal was downloaded from http://labshare.cshl.edu/shares/mhammelllab/www-data/TElocal/prebuilt_indices/hg19_rmsk_TElocus.ind.gz
+
+Quantification using TElocal version 0.1.0
+```{bash, eval=FALSE}
+parallel -j 63 ~/working_data_01/bin/TElocal/TElocal -b {} \
+--GTF /home/sbuckberry/working_data_02/polo_project/human_ips/resources/hg19_ensGene_with_ercc.gtf \
+--TE /home/sbuckberry/working_data_02/polo_project/human_ips/resources/hg19_rmsk_TElocus.ind \
+--project {.} \
+--format BAM \
+--sortByPos \
+--stranded reverse \
+--mode uniq ::: *_dta.uniq.bam
+
+```
+
+# Measuring differential expression of transposable elements
+
+## Preliminaries
+
+Load the libraries and scripts
+```{r, message=FALSE, warning=FALSE}
+# Differential expression testing
+library(limma)
+library(edgeR)
+library(magrittr)
+library(ggplot2)
+library(GenomicFeatures)
+library(ChIPpeakAnno)
+library(stringr)
+library(reshape2)
+library(gridExtra)
+library(cowplot)
+library(tidyr)
+#library(RUVSeq)
+library(jsonlite)
+```
+
+Load the script that contains functions used in the project
+```{r, message=FALSE, warning=FALSE}
+source("R/project_functions.R")
+```
+
+## Load the RNA-seq count data and associated sample meta-data
+
+Read the sample count tables and combine into matrix
+```{r, eval=FALSE}
+# List the counts tables for all samples
+cnt_files <- list.files(path = "RNAseq/processed_data/te_analysis/",
+                        full.names = TRUE, pattern = "cntTable.gz")
+
+dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>% do.call(cbind, .)
+libs <- colnames(dat2) %>% str_sub(start = 1, end = 6)
+colnames(dat2) <- libs
+
+#remove rows with all zero's 
+keep_row <- rowSums(dat2) > 0
+table(keep_row)
+dat2 <- dat2[keep_row, ]
+saveRDS(dat2, file = "RNAseq/processed_data/te_and_gene_counts.Rds")
+dim(dat2)
+```
+
+```{r, cache=TRUE}
+dat2 <- readRDS("RNAseq/processed_data/te_and_gene_counts.Rds")
+```
+
+Read the RNA-seq sample meta-data table 
+```{r, cache=TRUE}
+sample_dat <- fread("RNAseq/MEL1_polyA_RNAseq_sample_table.txt")
+sample_dat$model_group <- str_c(sample_dat$Group, sample_dat$Donor, sep = "_")
+```
+
+Ensure the sample meta-data table is in the same order and the read count data
+```{r, cache=TRUE}
+sample_dat$group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+sample_dat$sample_id <- str_c(sample_dat$Timepoint, sample_dat$Donor, sample_dat$Media, sep = "_")
+sample_dat$sample_id[duplicated(sample_dat$sample_id)] <- str_c(sample_dat$sample_id[duplicated(sample_dat$sample_id)], "_1")
+sample_dat$model_group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+pDat <- sample_dat[match(colnames(dat2), sample_dat$Library), ]
+stopifnot(all(pDat$Library == colnames(dat2)))
+```
+
+Read in the count data, subset for MEL1 samples, and setup experimental design matrix
+```{r, cache=TRUE, fig.height=14}
+
+y <- DGEList(counts = dat2)
+y$samples <- cbind(y$samples, pDat)
+
+y2 <- y[ ,y$samples$Donor %in% c("MEL1")]
+
+design <- model.matrix(~Group, data=y2$samples)
+colnames(design) <- str_remove(string = colnames(design), pattern = "Group")
+
+keep <- filterByExpr(y2, design)
+table(keep)
+y2 <- y2[keep, ,keep.lib.sizes=FALSE]
+y2 <- calcNormFactors(y2)
+
+y2 <- estimateDisp(y2, design = design, robust = TRUE)
+```
+
+
+```{r, cache=TRUE}
+plotMDS(y2[ ,y2$samples$Media == "E8"])
+```
+
+
+Inspect the BCV plots for all tags (genes and TEs) and TE's only
+```{r}
+plotBCV(y2, cache=TRUE)
+```
+
+Inspect MDS plot using only the TE signal
+```{r, cache=TRUE}
+plotMDS(y2[grepl(pattern = "_dup", rownames(y2)), ], labels = y2$samples$Group)
+```
+We can see here that the TE expression signal alone is sufficient to discriminate Primed iPSCs from ESCs, TNT-iPSCs and naive-to-primed iPSCs.  
+
+Setup the differential expression testing
+```{r, cache=TRUE}
+fit <- glmFit(y2, design)
+
+# list of contrasts for differential expression vs ESCs
+cont_list <- list(ESC_vs_Fibroblast=c(0,-1,0,0,0,0),
+                  ESC_vs_N2P=c(0,0,-1,0,0,0),
+                  ESC_vs_Naive=c(0,0,0,-1,0,0),
+                  ESC_vs_Primed=c(0,0,0,0,-1,0),
+                  ESC_vs_TNT=c(0,0,0,0,0,-1),
+                  Primed_vs_TNT=c(0,0,0,0,1,-1),
+                  Primed_vs_N2P=c(0,0,-1,0,1,0))
+
+# Get the TE genome co-ordinates
+repeat_gtf <- read.table("resources/hg19_rmsk_TE.gtf.gz")
+repeat_gr <- GRanges(seqnames = repeat_gtf$V1,
+                     ranges = IRanges(start = repeat_gtf$V4,
+                                      end = repeat_gtf$V5))
+strand(repeat_gr) <- repeat_gtf$V7
+repeat_gr$class <- repeat_gtf$V19
+repeat_gr$family <- repeat_gtf$V16
+repeat_gr$gene <- repeat_gtf$V10
+repeat_gr$transcript <- repeat_gtf$V13
+repeat_gr$id <- str_c(repeat_gr$transcript, repeat_gr$family, repeat_gr$class, sep = ":")
+rm(repeat_gtf)
+
+# Calculate differential expression, then subset for TE's and re-calculate FDR as we are only interested in finding DE TE's here
+calc_de_for_te <- function(x){
+        cont <- cont_list[[x]]
+        lrt <- glmLRT(fit, contrast = cont)
+        tt <- topTags(lrt, n = nrow(y))
+        tt_table <- tt$table
+        tt_table$gene_id <- rownames(tt_table)
+        tt_table$contrast <- names(cont_list)[x]
+        
+        # Subset for TE's and recalculate FDR
+        tt_table <- tt_table[tt_table$gene_id %in% repeat_gr$id, ]
+        tt_table$FDR <- p.adjust(p = tt_table$PValue, method = "fdr")
+        
+        return(tt_table)
+}
+
+tt_list <- lapply(1:length(cont_list), calc_de_for_te)
+
+tt_all <- do.call(rbind, tt_list)
+tt_all$significant <- (abs(tt_all$logFC) > 1) & (tt_all$FDR < 0.05) & (tt_all$logCPM > 0)
+tt_all$significant <- ifelse(test = tt_all$significant, yes = "Significant", no = "NS")
+tt_all$significant <- factor(tt_all$significant, levels = c("NS", "Significant"))
+```
+
+Add the genomic coordinates to the TEs tested for differential expression
+```{r, cache=TRUE}
+# Add the TE locus information
+ind <- match(tt_all$gene_id, repeat_gr$id)
+
+tt_all <- cbind(tt_all, as.data.frame(repeat_gr)[ind, ])
+
+te_de_gr <- GRanges(seqnames = tt_all$seqnames, IRanges(start = tt_all$start, end = tt_all$end))
+mcols(te_de_gr) <- tt_all[ ,c(1:8,14:18)]
+strand(te_de_gr) <- tt_all$strand
+
+all_cpm <- log2(cpm(y2) + 1)
+te_cpm <- all_cpm[grepl(pattern = "_dup", rownames(all_cpm)), ] %>% data.frame()
+
+te_de_df <- as.data.frame(te_de_gr)
+
+te_de_df$Direction <- ifelse(te_de_df$logFC > 0, yes = "Up", no = "Down")
+
+table(te_de_df$Direction[te_de_df$contrast == "ESC_vs_Primed" &
+                           te_de_df$significant == "Significant" & te_de_df$gene %in% c("HERVH-int", "LTR7")])
+
+write.table(te_de_df, "RNAseq/processed_data/MEL1_TE_differential_expression_results.txt",
+            quote = FALSE, sep = "\t", col.names = TRUE)
+```
+
+### Setup Glimma html pages for TE's
+
+```{r, eval=FALSE}
+
+
+te_anno <- te_de_df[ ,c("class", "family", "gene", "transcript", "id")]
+keep_row <- !duplicated.default(te_anno$id)
+te_anno <- te_anno[keep_row, ]
+#te_anno <- te_anno[te_anno$id %in% rownames(te_counts), ]
+rownames(te_anno) <- te_anno$id
+te_anno$GeneID <- te_anno$transcript
+nrow(te_anno)
+
+te_counts <- y2$counts[grepl(pattern = ":", rownames(y2$counts)), ]
+te_counts <- te_counts[rownames(te_counts) %in% te_anno$id, ]
+nrow(te_counts)
+
+#ind <- match(rownames(te_counts), sub_te_de_df$gene_id)
+
+#sample_id <- 
+
+make_te_glimma <- function(contrast="ESC_vs_Primed", launch = TRUE){
+
+    sub_te_de_df <- te_de_df[te_de_df$contrast == contrast, ]
+    
+    # Fix direction of change and set significance
+    sub_te_de_df$logFC <- -sub_te_de_df$logFC
+    
+    sub_te_de_df$status <- 0
+    sub_te_de_df$status[sub_te_de_df$significant == "Significant" &
+                            sub_te_de_df$Direction == "Up"] <- -1
+    sub_te_de_df$status[sub_te_de_df$significant == "Significant" &
+                            sub_te_de_df$Direction == "Down"] <- 1
+    
+    sub_te_de_df$GeneID <- sub_te_de_df$id
+    
+    
+    # Set the order of the data.frames 
+    ind <- match(sub_te_de_df$id, rownames(te_counts))
+    
+    sub_counts <- te_counts[ind, ]
+    all(rownames(sub_counts) == sub_te_de_df$id)
+    all(rownames(sub_counts) == rownames(sub_te_de_df))
+    
+    rownames(sub_te_de_df) <- sub_te_de_df$id
+    
+    # Get the annotation data and set order
+    sub_annot <- te_anno[te_anno$id %in% sub_te_de_df$GeneID, ]
+    sub_annot <- sub_annot[match(rownames(sub_counts), rownames(sub_annot)), ]
+
+    
+    # Ensure everything is in the correct order
+    all(rownames(sub_counts) == rownames(sub_te_de_df))
+    all(rownames(sub_annot) == rownames(sub_counts))
+    
+    # Modify group names for plots
+    groups <- y2$samples$Group
+    groups[groups == "N2P"] <- "NtP"
+    
+    colnames(sub_te_de_df)[colnames(sub_te_de_df) == "gene"] <- "TE"
+    colnames(sub_te_de_df)[colnames(sub_te_de_df) == "transcript"] <- "TE_copy"
+    
+    glMDPlot(x = sub_te_de_df, path = "glimma-plots",
+             folder = str_c("TE_", contrast), launch = launch,
+             xval="logCPM", yval = "logFC", transform = TRUE,
+             counts = sub_counts, anno=sub_annot,
+             main=str_c("TE differential expression \n", contrast),
+         side.ylab = "logCPM", 
+         groups = factor(groups, levels=c("ESC", "Primed", "TNT",
+                                                         "NtP", "Naive",
+                                                    "Fibroblast")),
+         samples = makeUnique(y2$samples$Group),
+         status = matrix(sub_te_de_df$status),
+         display.columns=c("class", "family", "TE", "TE_copy", "seqnames",
+                           "start", "end", "PValue", "FDR"),
+         cols=c("firebrick", "grey", "firebrick")
+         )
+}
+
+
+make_te_glimma("ESC_vs_Primed", launch = TRUE)
+make_te_glimma("ESC_vs_TNT", launch = FALSE)
+make_te_glimma("ESC_vs_N2P", launch = FALSE)
+make_te_glimma("Primed_vs_TNT", launch = FALSE)
+make_te_glimma("Primed_vs_N2P", launch = FALSE)
+make_te_glimma("ESC_vs_Naive", launch = FALSE)
+make_te_glimma("ESC_vs_Fibroblast", launch = FALSE)
+```
+
+
+
+```{r, cache=TRUE}
+test <- read.table("RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
+
+dim(test) == dim(te_de_df)
+all(colnames(test) == colnames(te_de_df))
+all(test$seqnames == te_de_df$seqnames)
+all(test$start == te_de_df$start)
+all(test$end == te_de_df$end)
+all(test$id == te_de_df$id)
+all(test$logCPM == te_de_df$logCPM)
+table(test$logFC == te_de_df$logFC)
+```
+
+Create table of DE TE's
+```{r, eval=FALSE}
+#plot_contrasts <- c("ESC_vs_Primed", "ESC_vs_N2P", "ESC_vs_TNT")
+plot_contrasts <- c("ESC_vs_Primed")
+sig_ids <- te_de_df$gene_id[(te_de_df$significant == "Significant") & (te_de_df$contrast %in% plot_contrasts)] %>% unique()
+
+# How many TE's are in donor derived cells
+#table(donor_tnt_sig_te %in% sig_ids)
+
+#te_de_gr[(te_de_gr$gene_id %in% sig_ids) & te_de_gr$contrast == "Primed_vs_TNT" & te_de_gr$logFC > 1 & te_de_gr$gene == "HERVH-int"]
+library(gt)
+
+table_dat <- te_de_df[(te_de_df$gene_id %in% sig_ids) & (te_de_df$contrast == "ESC_vs_Primed"), ] %>% dplyr::group_by(class, family) %>% dplyr::tally(sort = TRUE) %>% data.frame()
+table1 <- gt(table_dat, auto_align = TRUE, groupname_col = "class")
+table1 %<>%
+        tab_header(title = "Differentially expressed TE's", subtitle = "Primed iPSC vs ESC") %>%
+         cols_label(family="TE Family", n="Num. DE TE's") %>%
+        tab_style(locations = cells_body(), style = cell_text(align="left", size="small")) %>%
+        tab_style(locations = cells_title(), style = cell_text(align="left", size="small", weight = "bold")) %>%
+        tab_style(locations = cells_column_labels(columns = c("family", "n")), style = cell_text(align="left", weight = "bold")) %>% 
+        tab_style(locations = cells_row_groups(), style = cell_text(align="left", size="small", weight = "bold"))
+gtsave(table1, filename = "RNAseq/plots/de_te_table1.pdf")
+
+table_dat2 <- te_de_df[(te_de_df$gene_id %in% sig_ids) & (te_de_df$contrast == "ESC_vs_Primed"), ] %>% dplyr::group_by(class, family, gene) %>% dplyr::tally(sort = TRUE) %>% data.frame()
+table2 <- gt(table_dat2, auto_align = TRUE, groupname_col = c("family"))
+table2 %<>%
+        tab_header(title = "Differentially expressed TE's", subtitle = "Primed iPSC vs ESC") %>%
+         cols_label(class="Family", gene="Element", n="Num. DE") %>%
+        tab_style(locations = cells_body(), style = cell_text(align="left", size="small")) %>%
+        tab_style(locations = cells_title(), style = cell_text(align="left", size="small", weight = "bold")) %>%
+        tab_style(locations = cells_column_labels(columns = c("class", "gene", "n")), style = cell_text(align="left", weight = "bold")) %>%
+        tab_style(locations = cells_row_groups(), style = cell_text(align="left", size="small", weight = "bold"))
+gtsave(table2, filename = "RNAseq/plots/de_te_table2.pdf")
+```
+
+Get counts of TE's
+```{r}
+te_de_df[te_de_df$Direction == "Down" & te_de_df$contrast == "ESC_vs_Primed" & te_de_df$significant == "Significant", ] %>% 
+  nrow()
+
+te_de_df[te_de_df$Direction == "Up" & te_de_df$contrast == "ESC_vs_TNT" & te_de_df$significant == "Significant", ] %>% 
+  nrow()
+
+te_de_df[te_de_df$Direction == "Down" & te_de_df$contrast == "ESC_vs_N2P" & te_de_df$significant == "Significant", ] %>% 
+  nrow()
+```
+
+
+Plot heatmap of HERVH-int expression for ESCs and iPSCs (all groups)
+```{r}
+#plot_class <- c("DNA", "LINE", "LTR", "RC", "RNA", "Satellite", "SINE")
+
+#e8_libs <- y2$samples$Library[y2$samples$Media == "E8"]
+
+hm_annot_dat <- y2$samples[ ,c("Media", "Group")] 
+
+col_ids <- with(data = y2$samples, expr = str_c(Group, Passage, sep = "_"))
+
+heatmap_te <- function(ids, title=""){
+        
+        plot_dat <- all_cpm[rownames(all_cpm) %in% ids, ]
+        plot_dat <- plot_dat[complete.cases(plot_dat), ] %>% data.frame()
+
+        pheatmap(plot_dat, scale = 'row', annotation_col = hm_annot_dat, 
+                 labels_col = col_ids, main = title,
+                 annotation_names_col = TRUE,
+                 show_rownames = FALSE, border_color = NA,
+                 clustering_distance_rows = 'correlation',
+                 clustering_distance_cols = 'correlation')
+}
+
+pdf("RNAseq/plots/MEL1_de_HERVHint_heatmap.pdf", width = 4, height = 5)
+heatmap_te(ids = sig_ids[grepl("HERVH-int", sig_ids)], title = "DE HERVH-int elements")
+dev.off()
+
+heatmap_te(ids = sig_ids[grepl("HERVH-int", sig_ids)], title = "DE HERVH-int elements")
+
+```
+
+```{r}
+
+hm_dat <- all_cpm[rownames(all_cpm) %in% sig_ids[grepl("HERVH-int", sig_ids)], ]
+hm_dat <- hm_dat[complete.cases(hm_dat), ] %>% data.frame()
+hm_dat$id <- rownames(hm_dat)
+
+wb_fig4g <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_fig4g, sheetName = "Fig_4g")
+openxlsx::writeData(wb = wb_fig4g, sheet = "Fig_4g",
+                    x = hm_dat)
+openxlsx::saveWorkbook(wb = wb_fig4g,
+                       file = "Figure_4g_source_data.xlsx", overwrite = TRUE)
+```
+
+
+Make MA and volcano plots
+```{r}
+te_de_df <- te_de_df[order(te_de_df$significant, -log10(te_de_df$PValue)), ]
+te_de_df$contrast <- factor(te_de_df$contrast, levels=c("ESC_vs_Primed", "ESC_vs_TNT", "ESC_vs_N2P",
+                                                        "ESC_vs_Naive", "ESC_vs_Fibroblast", "Primed_vs_TNT",
+                                                        "Primed_vs_N2P"))
+
+gg_erv1 <- ggplot(te_de_df[(te_de_df$contrast %in% c("ESC_vs_Primed", "ESC_vs_N2P", "ESC_vs_TNT")) &
+                        te_de_df$gene %in% c("HERVH-int", "LTR7"), ],
+       aes(x = -logFC, y = gene, color=significant)) +
+        geom_jitter(alpha=0.5, size=0.4) + geom_vline(xintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        scale_colour_manual(values = c("grey", "firebrick")) + 
+        xlab("Log2 fold change") + ylab("") +
+        facet_grid(gene~contrast, drop = TRUE, scales = "free_y", space = "free") +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right") +
+        theme(strip.text.y = element_text(size = 0))
+
+gg_ma <- ggplot(te_de_df[(te_de_df$contrast %in% c("ESC_vs_Primed", "ESC_vs_N2P", "ESC_vs_TNT")), ],
+       aes(y = -logFC, x = logCPM, color=significant)) +
+        scale_colour_manual(values = c("grey", "firebrick")) +
+        geom_point(alpha=0.5, size=0.8) +
+        xlab("log CPM") + ylab("log fold change") +
+        geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
+        facet_grid(.~contrast, drop = TRUE, scales = "free_y", space = "free") +
+        theme(strip.text.y = element_text(angle = 0)) +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+gg_volc <- ggplot(te_de_df[(te_de_df$contrast %in% c("ESC_vs_Primed", "ESC_vs_N2P", "ESC_vs_TNT")), ],
+       aes(x = -logFC, y = -log10(PValue), color=significant)) +
+        scale_colour_manual(values = c("grey", "firebrick")) +
+        geom_point(alpha=0.5, size=0.8) +
+        geom_vline(xintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        ylab("-log10 P-value") + xlab("log fold change") +
+        #geom_vline(yintercept = 0) +
+        facet_grid(.~contrast, drop = TRUE, scales = "free_y", space = "free") +
+        theme(strip.text.y = element_text(angle = 0)) +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+pdf(file = "RNAseq/plots/MEL1_TE_differential_expression_MA_and_volcano_plots.pdf", width = 5, height = 3)
+plot_grid(gg_ma, gg_volc, align = 'hv', nrow = 2, axis = 'l')
+dev.off()
+
+pdf(file = "RNAseq/plots/HERVHint_and_LTR7_fold_change_plots.pdf", width = 5, height = 1.3)
+gg_erv1
+dev.off()
+
+```
+
+
+```{r}
+cpm_dat <- cpm(y2)
+cpm_dat <- log2(cpm_dat+1)
+
+herv_ids <- sig_ids[grepl("HERVH-int", sig_ids)]
+ltr7_ids <- sig_ids[grepl("LTR7", sig_ids)]
+
+LTR5_Hs_ids <- rownames(y2)[grepl(pattern = "LTR5", x = rownames(y2))]
+
+
+plot_te_family <- function(te_ids=sig_ids, title=""){
+
+        te_cpm <- cpm_dat[rownames(cpm_dat) %in% te_ids, ] %>% reshape2::melt()
+        te_cpm$Group <- pDat$Group[match(te_cpm$Var2, pDat$Library)]
+        te_cpm$Sample <- pDat$Library[match(te_cpm$Var2, pDat$Library)]
+        te_cpm$Group <- factor(te_cpm$Group, levels=c("ESC", "Primed", "Naive", "TNT", "N2P", "Fibroblast"))
+        
+        gg_box <- ggplot(te_cpm, aes(x = Sample, y = value)) +
+                geom_jitter(alpha=0.2) +
+                ylab("log2 CPM") + xlab("") +
+                geom_boxplot(outlier.colour = NA, fill=NA) +
+                facet_grid(.~Group, drop = TRUE, space = "free", scales = "free")+
+                ggtitle(title) + sams_pub_theme()
+
+        return(gg_box)
+}
+
+pdf("RNAseq/plots/MEL1_TE_differential_expressed_HERV_LTR7_cpm_boxplots.pdf", height = 5, width = 4)
+plot_grid(plot_te_family(te_ids = herv_ids, title = "HERVH-int"),
+plot_te_family(te_ids = ltr7_ids, title = "LTR7"), align = 'v', axis = "l", nrow = 2)
+dev.off()
+
+plot_grid(plot_te_family(te_ids = herv_ids, title = "HERVH-int"),
+plot_te_family(te_ids = ltr7_ids, title = "LTR7"), align = 'v', axis = "l", nrow = 2)
+
+
+
+
+LTR5_Hs_Ids <- te_de_df$transcript[grepl(x = te_de_df$id, pattern = "LTR5_Hs")] %>% as.character()
+plot_te_family(te_ids = LTR5_Hs_ids, title = "LTR5_Hs")
+
+```
+
+```{r}
+herv_cpm <- cpm_dat[rownames(cpm_dat) %in% herv_ids, ] %>% reshape2::melt()
+        herv_cpm$Group <- pDat$Group[match(herv_cpm$Var2, pDat$Library)]
+        herv_cpm$Sample <- pDat$Library[match(herv_cpm$Var2, pDat$Library)]
+        herv_cpm$Group <- factor(herv_cpm$Group, levels=c("ESC", "Primed", "Naive", "TNT", "N2P", "Fibroblast"))
+```
+
+```{r}
+wb_ed_fig8i <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig8i, sheetName = "ED_Fig_8i")
+openxlsx::writeData(wb = wb_ed_fig8i, sheet = "ED_Fig_8i",
+                    x = herv_cpm)
+openxlsx::saveWorkbook(wb = wb_ed_fig8i,
+                       file = "ED_Figure_8i_source_data.xlsx", overwrite = TRUE)
+```
+
+
+Plot correlation of TE's with genes
+```{r}
+
+# For each TE, get the correlation value of genes within 100kb
+
+te <- "HERVH-int_dup4597:ERV1:LTR"
+
+ensembl_txdb <- makeTxDbFromGFF(file = "resources/hg19.ensGene.gtf.gz", format = "gtf")
+ensembl_exons <- exons(ensembl_txdb)
+#te_genes <- transcriptsBy(x = denovo_txdb, by = "exon")
+ensembl_genes <- genes(x = ensembl_txdb)
+ensembl_promoter <- promoters(ensembl_genes, upstream=1, downstream=0)
+te_id <- herv_ids[1]
+
+all(pDat$Library == colnames(dat2))
+exprs_dat <- dat2[ ,pDat$Donor %in% c("MEL1") & pDat$Media == "E8"]
+exprs_dat <- cpm(exprs_dat, log = TRUE, prior.count = 1)
+
+calc_te_cor <- function(te_id, cor_range = 500000){
+  
+  message(te_id)
+  
+  te_gr <- repeat_gr[repeat_gr$id == te_id]
+  
+  # Get flanking genes
+  te_flanks <- flank(te_gr, width = cor_range, both = TRUE)
+
+  flank_genes <- suppressWarnings(
+    ensembl_promoter[overlapsAny(ensembl_promoter, te_flanks, )]
+    )
+  
+  # Calculate TE to gene correlations for flanking genes
+  flank_gene_cpm <- exprs_dat[rownames(exprs_dat) %in% flank_genes$gene_id, ]
+  
+  te_cpm <- exprs_dat[rownames(exprs_dat) == te_id, ]
+  
+  gene_cor <- lapply(X = 1:nrow(flank_gene_cpm),
+                     FUN = function(x){cor(te_cpm, flank_gene_cpm[x, ], method = "spearman", use = "pairwise.complete.obs")}) %>%
+    unlist()
+  
+  # Get the gene TSS distance to TE start
+  get_gene_dist <- function(x){
+    tss_dist <- start(flank_genes)[flank_genes$gene_id == rownames(flank_gene_cpm)[x]] - start(te_gr)
+    }
+  dists <- lapply(1:nrow(flank_gene_cpm), get_gene_dist) %>% unlist()
+  
+  # Combine the results
+  df_out <- data.frame(te=te_id, gene=rownames(flank_gene_cpm), cor=gene_cor, tss_dist=dists)
+  
+}
+
+# get Cor values and plot for all differential expressed TE's
+
+# Use try to skip TE's with no nearby genes
+try_cor <- function(te_id){try(calc_te_cor(te_id), silent=TRUE)}
+
+herv_gene_cor_df <- lapply(herv_ids, try_cor)
+keep <- lapply(herv_gene_cor_df, is.data.frame) %>% unlist()
+herv_gene_cor_dat <- do.call(rbind, herv_gene_cor_df[keep])
+
+ggplot(herv_gene_cor_dat, aes(x = tss_dist, y = cor)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(span = 0.4, method = "loess") + ylab("Gene expression correlation") +
+  xlab("Distance from TE")
+
+```
+
+```{r}
+herv_gene_cor_dat
+```
+
+
+### Plot heatmaps of methylation of TE transcription start site determined from transcriptome assembly
+
+
+make a bed file of DE TE's
+```{r}
+
+sig_te_gr <- te_de_gr[te_de_gr$significant == "Significant" & te_de_gr$contrast == "ESC_vs_Primed"]
+gr_to_bed(gr = sig_te_gr, out_path = "RNAseq/processed_data/MEL1__ESC_vs_Primed_DE_TEs.bed")
+
+
+```
+
+Filter de novo transcript GTF for DE TE's
+```{bash}
+
+bedtools intersect -wa -a RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_filtered.gtf.gz -b RNAseq/processed_data/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_DE.gtf > RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_DE.gtf
+
+
+```
+
+Create heatmaps
+```{bash}
+
+computeMatrix scale-regions --transcriptID transcript --metagene --missingDataAsZero -p 24 -a 5000 -b 5000 -m 1000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf \
+-S RL1966-2019-12-24-P13-plus-20-MEL1-inE8-mRNAseq_S13_merged_lanes_dta_uniq_cpm.bigwig \
+RL1967-2019-12-24-P13-Plus-14-MEL1-Primed-E8-mRNAseq_S14_merged_lanes_dta_uniq_cpm.bigwig \
+RL1975-2019-12-24-P8-MEL1-HDFa-mRNAseq_S22_merged_lanes_dta_uniq_cpm.bigwig \
+RL1976-2019-12-24-P20-plus-3-MEL1-hESCs-to-fibroblasts-mRNAseq_S23_merged_lanes_dta_uniq_cpm.bigwig \
+RL1971-2019-12-24-P17-MEL1-HDF-to-E8-mRNAseq_S18_merged_lanes_dta_uniq_cpm.bigwig \
+RL1972-2019-12-24-P18-MEL1-HDF-to-E8-mRNAseq_S19_merged_lanes_dta_uniq_cpm.bigwig \
+RL1970-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S17_merged_lanes_dta_uniq_cpm.bigwig \
+RL1979-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S26_merged_lanes_dta_uniq_cpm.bigwig \
+RL1973-2019-12-24-P17-MEL1-D13-TNT-mRNAseq_S20_merged_lanes_dta_uniq_cpm.bigwig \
+RL1974-2019-12-24-P16-MEL1-D13-TNT-mRNAseq_S21_merged_lanes_dta_uniq_cpm.bigwig \
+RL1977-2019-12-24-P4-plus-19-MEL1-HDFa-N2P-mRNAseq_S24_merged_lanes_dta_uniq_cpm.bigwig \
+RL1978-2019-12-24-P9-plus-13-MEL1-HDFa-N2P-mRNAseq_S25_merged_lanes_dta_uniq_cpm.bigwig \
+--samplesLabel ESC_P20 ESC_P14 Mesoderm_P8 Mesoderm_P20 Primed_P17 Primed_P18 Naive_P15_1 Naive_P15_2 TNT_P17 TNT_P16 NtoP_P4 NtoP_P9 \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_RNA_CPM.mat.gz
+
+plotHeatmap --kmeans 2 --colorMap Reds --heatmapWidth 2 --heatmapHeight 15 \
+-m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_RNA_CPM.mat.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/MEL1_DE_TE_transcript_CPM_heatmap.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/MEL1_DE_TE_transcript_CPM_heatmap.pdf && git commit -m 'init' && git push
+```
+
+```{bash}
+computeMatrix reference-point --referencePoint TSS --transcriptID transcript --metagene --missingDataAsZero -p 24 --binSize 250 -a 10000 -b 5000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/MEL1_WGBS/*_mCG_levels.bigwig \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_mCG.mat.gz
+
+plotHeatmap --colorMap Reds --heatmapWidth 2 --heatmapHeight 5 \
+-m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_mCG.mat.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_mCG_heatmap.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_mCG_heatmap.pdf && git commit -m 'init' && git push
+```
+
+
+```{r}
+computeMatrix reference-point --referencePoint TSS --transcriptID transcript --metagene --missingDataAsZero -p 24 --binSize 250 -a 10000 -b 5000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/MEL1_WGBS/*_mCG_levels.bigwig \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_mCG.mat.gz
+
+plotHeatmap --colorMap Reds --heatmapWidth 2 --heatmapHeight 5 \
+-m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_mCG.mat.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_mCG_heatmap.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_mCG_heatmap.pdf && git commit -m 'init' && git push
+
+
+computeMatrix reference-point --referencePoint TSS --transcriptID transcript --metagene --missingDataAsZero -p 24 --binSize 250 -a 10000 -b 5000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf \
+-S RL1966-2019-12-24-P13-plus-20-MEL1-inE8-mRNAseq_S13_merged_lanes_dta_uniq_cpm.bigwig \
+RL1967-2019-12-24-P13-Plus-14-MEL1-Primed-E8-mRNAseq_S14_merged_lanes_dta_uniq_cpm.bigwig \
+RL1975-2019-12-24-P8-MEL1-HDFa-mRNAseq_S22_merged_lanes_dta_uniq_cpm.bigwig \
+RL1976-2019-12-24-P20-plus-3-MEL1-hESCs-to-fibroblasts-mRNAseq_S23_merged_lanes_dta_uniq_cpm.bigwig \
+RL1971-2019-12-24-P17-MEL1-HDF-to-E8-mRNAseq_S18_merged_lanes_dta_uniq_cpm.bigwig \
+RL1972-2019-12-24-P18-MEL1-HDF-to-E8-mRNAseq_S19_merged_lanes_dta_uniq_cpm.bigwig \
+RL1970-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S17_merged_lanes_dta_uniq_cpm.bigwig \
+RL1979-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S26_merged_lanes_dta_uniq_cpm.bigwig \
+RL1973-2019-12-24-P17-MEL1-D13-TNT-mRNAseq_S20_merged_lanes_dta_uniq_cpm.bigwig \
+RL1974-2019-12-24-P16-MEL1-D13-TNT-mRNAseq_S21_merged_lanes_dta_uniq_cpm.bigwig \
+RL1977-2019-12-24-P4-plus-19-MEL1-HDFa-N2P-mRNAseq_S24_merged_lanes_dta_uniq_cpm.bigwig \
+RL1978-2019-12-24-P9-plus-13-MEL1-HDFa-N2P-mRNAseq_S25_merged_lanes_dta_uniq_cpm.bigwig \
+--samplesLabel ESC_P20 ESC_P14 Mesoderm_P8 Mesoderm_P20 Primed_P17 Primed_P18 Naive_P15_1 Naive_P15_2 TNT_P17 TNT_P16 NtoP_P4 NtoP_P9 \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_RNA_CPM.mat.gz
+
+plotHeatmap --colorMap Reds --heatmapWidth 2 --heatmapHeight 5 \
+-m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_RNA_CPM.mat.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_CPM_heatmap.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_CPM_heatmap.pdf && git commit -m 'init' && git push
+
+```
+
+OKSM at the TSS
+```{r, eval=FALSE}
+computeMatrix reference-point --referencePoint TSS --transcriptID transcript --metagene --missingDataAsZero -p 24 --binSize 250 -a 10000 -b 5000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf \
+-S /home/sbuckberry/working_data_04/published_data/ChIPseq/Soufi_2012_oksm_chip/*.bigwig \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_OKSM_CPM.mat.gz
+
+plotHeatmap --colorMap Reds --heatmapWidth 2 --heatmapHeight 5 \
+-m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_analysis/TE_transcript_OKSM_CPM.mat.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_OKSM_heatmap.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/MEL1_DE_TE_transcript_OKSM_heatmap.pdf && git commit -m 'init' && git push
+```
+
+
+Count TE overlaps with de novo transcripts
+```{r, eval=FALSE}
+sig_gr <- te_de_gr[(te_de_gr$gene_id %in% sig_ids) & te_de_gr$contrast == "ESC_vs_Primed" & te_de_gr$logFC < 1]
+
+
+all_dmrs <- readRDS(file = "methylCseq/processed_data/MEL1_DSS_dmrs_20pc_filtered.Rds")
+
+table(overlapsAny(sig_gr, all_dmrs))
+
+txdb <- makeTxDbFromGFF(file = "RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_filtered.gtf.gz",
+                               format = "gtf")
+exn <- exonsByOverlaps(x = txdb, ranges = sig_gr)
+denovo_transcripts <- transcriptsByOverlaps(txdb, ranges = sig_gr)
+denovo_genes <- genes(te_de_txdb)
+
+denovo_genes_te_olap <- denovo_genes[overlapsAny(denovo_genes, exn)]
+
+table(overlapsAny(denovo_genes_te_olap, geneHancer_gr))
+
+te_hits <- findOverlaps(denovo_genes_te_olap, geneHancer_gr)
+te_geneHancer_gr_all <- geneHancer_gr[te_hits@to]
+table(te_geneHancer_gr_all$V11)
+
+te_geneHancer_gr_all_reduced <- reduce(te_geneHancer_gr_all)
+
+```
+
+Count TE overlaps with regulatory elements
+```{r}
+# Load the geneHancer data
+#geneHancer <- read.table("resources/hg19_USCS_geneHancerClusteredInteractionsDoubleElite.txt")
+geneHancer <- read.table("resources/hg19_geneHancerRegElements.txt")
+geneHancer_gr <- GRanges(seqnames = geneHancer$V1,
+                         ranges = IRanges(start = as.numeric(geneHancer$V2),
+                                          end = as.numeric(geneHancer$V3)))
+mcols(geneHancer_gr) <- geneHancer
+rm(geneHancer)
+
+sig_gr <- te_de_gr[(te_de_gr$gene_id %in% sig_ids) & te_de_gr$contrast == "ESC_vs_Primed" & te_de_gr$logFC < 1]
+
+# Count overlaps with regulatory elements 
+table(overlapsAny(sig_gr, geneHancer_gr))
+
+te_hits <- findOverlaps(sig_gr, geneHancer_gr)
+te_geneHancer_gr_all <- geneHancer_gr[te_hits@to]
+table(te_geneHancer_gr_all$V11)
+
+# Plot gene TE to TSS distance
+te_geneHancer_gr <- geneHancer_gr[overlapsAny(geneHancer_gr, sig_gr)]
+
+table(overlapsAny(te_geneHancer_gr, all_dmrs))
+# Write regulator elements to bed file for plotting
+
+#te_geneHancer_df <- as.data.frame(te_geneHancer_gr)
+te_geneHancer_df <- data.frame(seqnames(te_geneHancer_gr), start(te_geneHancer_gr),
+                               end(te_geneHancer_gr), te_geneHancer_gr$V4, 0, "+")
+
+write.table(te_geneHancer_df, file = "RNAseq/processed_data/TE_elements_genehancer_olaps.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+```
+
+
+Plot TE position and flanking gene fold change
+```{r}
+
+
+calc_fc <- function(x){
+        cont <- cont_list[[x]]
+        lrt <- glmLRT(fit, contrast = cont)
+        tt <- topTags(lrt, n = nrow(y))
+        tt_table <- tt$table
+        tt_table$gene_id <- rownames(tt_table)
+        tt_table$contrast <- names(cont_list)[x]
+        
+        # Subset for TE's and recalculate FDR
+        tt_table <- tt_table[!tt_table$gene_id %in% repeat_gr$id, ]
+        tt_table$FDR <- p.adjust(p = tt_table$PValue, method = "fdr")
+        
+        return(tt_table)
+}
+
+tt_list_gene <- lapply(1:length(cont_list), calc_fc)
+
+fc_df <- do.call(rbind, tt_list_gene)
+
+
+calc_te_fc <- function(te_id, cor_range = 500000){
+  
+  message(te_id)
+  
+  te_gr <- repeat_gr[repeat_gr$id == te_id]
+  
+  # Get flanking genes
+  te_flanks <- flank(te_gr, width = cor_range, both = TRUE)
+
+  flank_genes <- suppressWarnings(
+    ensembl_promoter[overlapsAny(ensembl_promoter, te_flanks)]
+    )
+  
+  # Calculate TE to gene fold changes for flanking genes
+  flank_gene_fc <- fc_df[fc_df$gene_id %in% flank_genes$gene_id, ]
+
+  # Get the gene TSS distance to TE start
+  get_gene_dist <- function(x){
+    gene_gr <- flank_genes[flank_genes$gene_id == flank_gene_fc$gene_id[x]]
+    
+    tss_dist <- ifelse(test = as.character(strand(gene_gr)) == "+",
+                   yes = (start(te_gr) - start(gene_gr)),
+                   no = (start(gene_gr) - start(te_gr)))
+    
+    return(tss_dist)
+  }
+  
+  flank_gene_fc$dists <- lapply(1:nrow(flank_gene_fc), get_gene_dist) %>% unlist()
+  flank_gene_fc$TE <- te_id
+  
+  # Combine the results
+  return(flank_gene_fc)
+  
+}
+
+
+try_fc <- function(te_id){try(calc_te_fc(te_id), silent=TRUE)}
+
+herv_gene_fc_df <- lapply(sig_gr$gene_id, try_fc)
+#herv_gene_fc_df <- lapply(herv_ids, try_fc)
+
+keep <- lapply(herv_gene_fc_df, is.data.frame) %>% unlist()
+herv_gene_fc_dat <- do.call(rbind, herv_gene_fc_df[keep])
+herv_gene_fc_dat$Significant <- (herv_gene_fc_dat$FDR < 0.05 & abs(herv_gene_fc_dat$logFC) > 1)
+herv_gene_fc_dat$Significant <- ifelse(test = herv_gene_fc_dat$Significant, yes = "firebrick", no = "lightgrey")
+
+keep_contrasts <- c("ESC_vs_Primed", "ESC_vs_TNT", "ESC_vs_N2P")
+
+herv_gene_fc_dat <- herv_gene_fc_dat[herv_gene_fc_dat$contrast %in% keep_contrasts, ]
+
+herv_gene_fc_dat$contrast <- factor(herv_gene_fc_dat$contrast, levels=keep_contrasts)
+
+herv_gene_fc_dat_sub <- herv_gene_fc_dat[abs(herv_gene_fc_dat$dists) < 100000, ]
+
+pdf("RNAseq/plots/TE_linked_gene_dist_FC_plot.pdf", width = 3, height = 1.75)
+ggplot(herv_gene_fc_dat_sub, aes(x = dists/1000, y = -logFC)) +
+  geom_point(alpha=0.5, colour=herv_gene_fc_dat_sub$Significant, size=1) +
+  geom_smooth(span=0.2, method = "loess") + 
+  facet_grid(.~contrast) +
+  geom_hline(yintercept = c(-1, 1), linetype='dashed', size=0.2) +
+  ylab("Log2 fold change") +
+  xlab("Distance from TE (Kb)") +
+  sams_pub_theme(legend_pos = "right", x.text.angle = 45, hjust = 1)
+dev.off()
+
+```
+
+```{r}
+wb_ed_fig8h <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig8h, sheetName = "ED_Fig_8h")
+openxlsx::writeData(wb = wb_ed_fig8h, sheet = "ED_Fig_8h",
+                    x = herv_gene_fc_dat_sub)
+openxlsx::saveWorkbook(wb = wb_ed_fig8h,
+                       file = "ED_Figure_8h_source_data.xlsx", overwrite = TRUE)
+```
+
+
+```{bash}
+computeMatrix reference-point \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/aligned_data/*MEL1*cpm.bigwig \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/TE_elements_genehancer_olaps.bed \
+-o h3k9me3_TE_elements_genehancer_olaps.tab.gz \
+-a 20000 -b 20000 -p 24 --binSize 1000
+
+plotProfile -m h3k9me3_TE_elements_genehancer_olaps.tab.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/h3k9me3_h3k9me3_TE_elements_genehancer_olaps_profile_plot.pdf
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/h3k9me3_h3k9me3_TE_elements_genehancer_olaps_profile_plot.pdf && git commit -m 'plot update' && git push
+
+computeMatrix reference-point \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/MEL1_WGBS/*_mCG_levels.bigwig \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/TE_elements_genehancer_olaps.bed \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/mCG_TE_elements_genehancer_olaps.tab.gz \
+-a 20000 -b 20000 -p 24 --binSize 1000
+
+plotProfile -m /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/mCG_TE_elements_genehancer_olaps.tab.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/mCG_TE_elements_genehancer_olaps_profile_plot.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5 --yMin 0 --yMax 1 \
+--samplesLabel "Naive-hiPSC" "hESC" "Primed-hiPSC" "TNT-hiPSC" "NtP-hiPSC_P4" "NtP-hiPSC_P9" "Mesoderm"
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/mCG_TE_elements_genehancer_olaps_profile_plot.pdf && git commit -m 'plot update' && git push
+
+computeMatrix reference-point --missingDataAsZero -a 20000 -b 20000 -p 24 --binSize 1000 \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/TE_elements_genehancer_olaps.bed \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1966-2019-12-24-P13-plus-20-MEL1-inE8-mRNAseq_S13_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1967-2019-12-24-P13-Plus-14-MEL1-Primed-E8-mRNAseq_S14_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1975-2019-12-24-P8-MEL1-HDFa-mRNAseq_S22_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1976-2019-12-24-P20-plus-3-MEL1-hESCs-to-fibroblasts-mRNAseq_S23_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1971-2019-12-24-P17-MEL1-HDF-to-E8-mRNAseq_S18_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1972-2019-12-24-P18-MEL1-HDF-to-E8-mRNAseq_S19_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1970-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S17_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1979-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S26_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1973-2019-12-24-P17-MEL1-D13-TNT-mRNAseq_S20_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1974-2019-12-24-P16-MEL1-D13-TNT-mRNAseq_S21_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1977-2019-12-24-P4-plus-19-MEL1-HDFa-N2P-mRNAseq_S24_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1978-2019-12-24-P9-plus-13-MEL1-HDFa-N2P-mRNAseq_S25_merged_lanes_dta_uniq_cpm.bigwig \
+--samplesLabel ESC_P20 ESC_P14 Mesoderm_P8 Mesoderm_P20 Primed_P17 Primed_P18 Naive_P15_1 Naive_P15_2 TNT_P17 TNT_P16 NtoP_P4 NtoP_P9 \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/RNA_polyA_CPM_TE_elements_genehancer_olaps.tab.gz 
+
+plotProfile -m /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/RNA_polyA_CPM_TE_elements_genehancer_olaps.tab.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/RNA_polyA_CPM_TE_elements_genehancer_olaps_profile_plot.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/RNA_polyA_CPM_TE_elements_genehancer_olaps_profile_plot.pdf && git commit -m 'plot update' && git push
+
+
+## OKSM plots
+computeMatrix reference-point \
+-S /home/sbuckberry/working_data_04/published_data/ChIPseq/Soufi_2012_oksm_chip/*.bigwig \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/TE_elements_genehancer_olaps.bed \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps.tab.gz \
+-a 20000 -b 20000 -p 24 --binSize 1000
+
+#computeMatrix scale-regions \
+#-S /home/sbuckberry/working_data_04/published_data/ChIPseq/Soufi_2012_oksm_chip/*.bigwig \
+#-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/TE_elements_genehancer_olaps.bed \
+#-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps.tab.gz \
+#-a 10000 -b 10000 -m 2000 -p 24 --binSize 200
+
+#plotProfile -m /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps.tab.gz \
+#-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps_profile_plot.pdf
+
+plotProfile -m /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps.tab.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps_profile_plot.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/OKSM_TE_elements_genehancer_olaps_profile_plot.pdf && git commit -m 'plot update' && git push
+
+```
+
+
+
+```{r}
+# te_element_hits <- findOverlaps(query = sig_gr, subject = te_geneHancer_gr)
+# 
+# # Get the distances between the centre of the TE and the TSS of the gene
+# get_te_gene_dists <- function(x){
+#   
+#   ind1 <- te_element_hits@from[x]
+#   ind2 <- te_element_hits@to[x]
+#   
+#   element <- sig_gr$gene_id[ind1]
+#   chr <- seqnames(sig_gr[ind1])
+#   te_pos <- resize(sig_gr[ind1], 1) %>% start()
+#   
+#   linked_gene <- te_geneHancer_gr$V17[ind2]
+#   linked_tss <- te_geneHancer_gr$V15[ind2]
+#   
+#   df <- data.frame(element=element, chr=chr, te_pos=te_pos,
+#                    linked_gene=linked_gene, linked_tss=linked_tss)
+#   return(df)
+# }
+# 
+# linked_dat <- lapply(1:length(te_element_hits), get_te_gene_dists)
+# linked_dat <- do.call(rbind, linked_dat)
+# linked_dat$dist <- abs(linked_dat$te_pos - linked_dat$linked_tss)
+# 
+# dists <- c(0,10,100,1000,10000,100000,1000000,10000000)
+# log_dists <- log1p(dists) 
+# log_labs <- c("TSS", "10", "100", "1 Kb", "10 Kb", "100 Kb", "1 Mb", "10 Mb")
+# 
+# dist_hist <- ggplot(linked_dat, aes(x=log1p(dist), alpha=0.8)) + 
+#         geom_histogram(bins = 30) + 
+#         geom_density() +
+#         scale_x_continuous(breaks=log_dists, expand=c(0,0), labels = log_labs) +
+#         xlab("TE enhancer distance from TSS (log scale)") +
+#         ylab("Number of \nenhancer TE's") +
+#         scale_y_continuous(expand = c(0, 0)) +
+#         scale_color_manual(values=vitC[c(6,5)]) +
+#         scale_fill_manual(values=vitC[c(6,5)]) +
+#         geom_vline(xintercept = log1p(1000), linetype='longdash', colour='grey') +
+#         sams_pub_theme()
+# 
+# pdf("RNAseq/plots/TE_enhancer_distance_to_TSS_histogram.pdf", height = 1, width = 2)
+# dist_hist
+# dev.off()
+# 
+# # get linked gene expression
+# 
+# 
+# #te_expression <- all_cpm[match(linked_dat$element, rownames(all_cpm)), ]
+# #all(rownames(te_expression) == linked_dat$element)
+# 
+# 
+# gene_match <- getBM(attributes=c('hgnc_symbol', 'ensembl_gene_id'), 
+#       filters = 'hgnc_symbol', 
+#       values = as.character(linked_dat$linked_gene), 
+#       mart = ensembl)
+# 
+# linked_dat$linked_ensg <- NA
+# linked_dat$linked_ensg <- gene_match$ensembl_gene_id[match(linked_dat$linked_gene, gene_match$hgnc_symbol)]
+# 
+# #linked_gene_expression <- all_cpm[[match(linked_dat$linked_gene, rownames(all_cpm)), ]]
+# 
+# linked_dat_sub <- linked_dat[linked_dat$linked_ensg %in% rownames(all_cpm), ]
+# 
+# get_linked_exprs_cor <- function(x){
+#   message(x)
+#   dat <- linked_dat_sub[x, ]
+#   te_exprs <- all_cpm[rownames(all_cpm) == dat$element, ] 
+#   gene_exprs <- all_cpm[rownames(all_cpm) == dat$linked_ensg, ]
+#   cor_stat <- data.frame(estimate=0, p.value=1)
+#   cor_stat <- try(cor.test(te_exprs, gene_exprs), silent = TRUE)
+#   return(data.frame(te=dat$element, linked_ensg=dat$linked_ensg, cor=cor_stat$estimate, cor_p=cor_stat$p.value))
+# }
+# 
+# # Check how many TE's are highly correlated with genes
+# cor_stat <- lapply(1:nrow(linked_dat_sub), get_linked_exprs_cor) %>% do.call(rbind, .)
+# hist(cor_stat$cor)
+# 
+# grep("HERVH-int_dup2016:ERV1:LTR", linked_dat_sub$element)
+# 
+# # plot highly correlated pairs
+# plot_te_gene_cor <- function(x){
+#   message(x)
+#   dat <- linked_dat_sub[x, ]
+#   te_exprs <- all_cpm[rownames(all_cpm) == dat$element, ] 
+#   gene_exprs <- all_cpm[rownames(all_cpm) == dat$linked_ensg, ]
+#   plot_correlation(te_exprs, gene_exprs)
+# }
+# 
+# plot_te_gene_cor(176)
+# 
+# ```
+# 
+# 
+# Count TE overlaps with ensembl genes
+# ```{r}
+# 
+# ensembl_txdb <- makeTxDbFromGFF(file = "resources/hg19.ensGene.gtf.gz", format = "gtf")
+# #ensembl_transcripts <- transcripts(ensembl_txdb)
+# #te_genes <- transcriptsBy(x = denovo_txdb, by = "exon")
+# ensembl_genes <- genes(x = ensembl_txdb)
+# ensembl_exons <- exonsBy(x = ensembl_txdb, by = "gene")
+# #names(te_genes) <- te_dat$tx_name
+# 
+# 
+# # select transcripts with differential TE expression
+# sig_te_gr <- te_de_gr[te_de_gr$gene_id %in% sig_ids]
+# #te_de_count <- mcols(sig_te_gr)[ ,9:11] %>% data.frame() %>% dplyr::count(class, family, gene, sort = TRUE) %>% data.frame()
+# #te_de_count[te_de_count$class %in% c("LTR", "LINE"), ] %>% gt()
+# 
+# length(unique(sig_te_gr))
+# 
+# table(overlapsAny(unique(sig_te_gr), ensembl_genes))
+# 
+# lnc_txdb <- makeTxDbFromGFF(file = "resources/13059_2012_3000_MOESM7_ESM.GTF", format = "gtf")
+# lnc_exons <- exonsBy(x = lnc_txdb, by = "gene")
+# lnc_transcripts <- transcripts(lnc_txdb)
+# 
+# table(overlapsAny(unique(sig_te_gr), lnc_exons))
+# table(overlapsAny(unique(sig_te_gr), lnc_transcripts))
+# 
+# denovo_txdb <- makeTxDbFromGFF(file = "RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_filtered.gtf.gz",
+#                                format = "gtf")
+# denovo_transcripts <- transcripts(denovo_txdb)
+# denovo_genes <- genes(denovo_txdb)
+# denovo_exons <- exonsBy(denovo_txdb, by = "tx")
+# 
+# table(overlapsAny(unique(sig_te_gr), denovo_transcripts))
+# table(overlapsAny(unique(sig_te_gr), denovo_genes))
+# 
+# #hits <- findOverlaps(unique(sig_te_gr), denovo_exons)
+# #de_transcripts <- denovo_exons[unique(hits@to)]
+# 
+# hits <- findOverlaps(unique(sig_te_gr), denovo_transcripts)
+# de_transcripts <- denovo_transcripts[unique(hits@to)]
+# 
+# de_transcript_ids <- de_transcripts$tx_name %>% unique()
+# write.table(x = de_transcript_ids, file = "RNAseq/processed_data/MEL1_de_te_transcripts_ids.txt",
+#             quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+
+```{r}
+gr_to_loci(unique(sig_te_gr[sig_te_gr$gene == "HERVH-int"]))
+```
+
+
+```{bash}
+zcat RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_filtered.gtf.gz | grep -F -f RNAseq/processed_data/MEL1_de_te_transcripts_ids.txt > RNAseq/processed_data/te_analysis/MEL1_merged_stringtie_transcripts_TE_significant.gtf
+
+```
+
+```{r}
+hits <- findOverlaps(unique(sig_te_gr), denovo_genes)
+de_genes <- denovo_genes[unique(hits@to)]
+
+# How many de novo transcripts with a DE TE contain a HERVH-int element?
+hervh_gr <- repeat_gr[repeat_gr$gene == "HERVH-int"]
+ltr7_gr <- repeat_gr[repeat_gr$gene == "LTR7"]
+
+table(overlapsAny(de_transcripts, hervh_gr))
+table(overlapsAny(de_transcripts_no_herv, ltr7_gr))
+
+de_transcripts_no_herv <- de_transcripts[!overlapsAny(de_transcripts, hervh_gr)]
+
+
+unique(names(de_transcripts))
+
+length(unique(hits@to))
+
+table(hits@to) %>% data.frame() %>% .[ ,2] %>% table()
+
+# what is the width of DE TE's?
+te_widths <- width(unique(sig_te_gr)) 
+
+# What is the width of TE transcripts
+transcript_widths <- width(de_transcripts) %>% sum()
+summary(transcript_widths)
+hist(de_lengths$tx_len)
+
+
+```
+
+deeptools plots
+```{r}
+
+sig_herh_gr <- te_de_gr[te_de_gr$gene_id %in% herv_ids] %>% unique()
+
+sig_herh_df <- as.data.frame(sig_herh_gr)
+sig_herh_df <- data.frame(sig_herh_df$seqnames, sig_herh_df$start, sig_herh_df$end, sig_herh_df$gene_id, 0, sig_herh_df$strand)
+write.table(sig_herh_df, file = "RNAseq/processed_data/hervh_de_elements.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+de_genes_df <- as.data.frame(de_genes)
+de_genes_df <- data.frame(de_genes_df$seqnames, de_genes_df$start, de_genes_df$end, de_genes_df$gene_id, 0, de_genes_df$strand)
+write.table(de_genes_df, file = "RNAseq/processed_data/te_de_denovo_genes.bed", quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+
+```
+
+```{bash}
+computeMatrix scale-regions \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/FE_tracks/*MEL1* \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/hervh_de_elements.bed \
+-o h3k9me3_hervh_de_elements.tab.gz \
+-a 10000 -b 10000 -m 5000 -p 24 --binSize 100
+
+plotProfile -m h3k9me3_hervh_de_elements.tab.gz \
+-o /home/sbuckberry/working_data_02/polo_project/human_ips/chip_seq/plots/h3k9me3_hervh_de_elements_profile_plot.pdf
+
+
+
+computeMatrix scale-regions \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/MEL1_WGBS/*_mCG_levels.bigwig \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_de_denovo_genes.bed \
+-o te_de_denovo_genes_mCG.tab.gz \
+-a 5000 -b 5000 -m 2000 -p 24 --binSize 100
+
+
+plotProfile --matrixFile te_de_denovo_genes_mCG.tab.gz \
+--outFileName /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/te_de_denovo_genes_mCG_profile.pdf \
+--numPlotsPerRow 7 --plotWidth 14
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/plots/te_de_denovo_genes_mCG_profile.pdf && git commit -m 'init' && git push
+
+computeMatrix scale-regions -p 48 \
+--binSize 100 \
+-b 5000 -a 5000 -m 2000 --smartLabels \
+-R /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/processed_data/te_de_denovo_genes.bed \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/*MEL1*bigwig \
+-o herv_de_transcripts_rna_cpm_matrix.gz
+
+plotProfile --matrixFile herv_de_transcripts_rna_cpm_matrix.gz \
+--outFileName /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/te_de_denovo_genes_RNA_profile.pdf \
+--plotWidth 14
+
+git add /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/plots/te_de_denovo_genes_RNA_profile.pdf && git commit -m 'init' && git push
+
+
+```
+
+
+Plot TPM of transcripts containing TE's
+```{r, eval=FALSE}
+
+tx_counts <- read.csv("RNAseq/processed_data/te_analysis/hg19_de_novo_stringtie_transcript_counts.txt", row.names = 1)
+
+gene_counts <- read.csv("RNAseq/processed_data/te_analysis/hg19_de_novo_stringtie_gene_counts.txt", row.names = 1)
+
+# Calculate TPM
+denovo_txdb <- makeTxDbFromGFF(file = "RNAseq/processed_data/te_analysis/merged_stringtie_transcripts_filtered.gtf",
+                               format = "gtf")
+
+genes <- exonsBy(x = denovo_txdb, by = "gene")
+geneLength <- sum(width(genes))
+
+# Function from https://haroldpimentel.wordpress.com/2014/05/08/what-the-fpkm-a-review-rna-seq-expression-units/
+countToTpm <- function(counts, effLen)
+{
+        rate <- log(counts) - log(effLen)
+        denom <- log(sum(exp(rate)))
+        exp(rate - denom + log(1e6))
+}
+
+# Check both GTF and count data are in the same order
+gene_counts <- gene_counts[match(names(geneLength), rownames(gene_counts)), ]
+all(rownames(gene_counts) == names(geneLength))
+
+# Calculate TPM for de novo gene assembly
+all_tpm <- apply(X = gene_counts, MARGIN = 2, FUN = countToTpm, effLen=geneLength)
+all_tpm <- log2(all_tpm+1)
+
+de_tpm <- all_tpm[rownames(all_tpm) %in% de_genes$gene_id, ] %>% reshape2::melt()
+
+de_tpm$Group <- pDat$Group[match(de_tpm$Var2, pDat$Library)]
+de_tpm$Sample <- pDat$Library[match(de_tpm$Var2, pDat$Library)]
+de_tpm$Group <- factor(de_tpm$Group, levels=c("ESC", "Primed", "Naive", "TNT", "N2P", "Fibroblast"))
+de_tpm$Donor <- pDat$Donor[match(de_tpm$Var2, pDat$Library)]
+
+gg_box <- ggplot(de_tpm, aes(x = Sample, y = value)) +
+        geom_jitter(alpha=0.2) +
+        ylab("log2 CPM") + xlab("") +
+        geom_violin() +
+        geom_boxplot(outlier.colour = NA, fill=NA) +
+        facet_grid(.~Donor+Group, drop = TRUE, space = "free", scales = "free")
+        ggtitle(title) + sams_pub_theme()
+
+
+
+
+
+
+```
+
+Plot the transcripts with DE TE's in donor samples
+```{r}
+
+donor_tnt_sig_te_gr <- repeat_gr[repeat_gr$id %in% donor_tnt_sig_te]
+
+table(overlapsAny(donor_tnt_sig_te_gr, de_genes))
+
+hits <- findOverlaps(unique(sig_te_gr), denovo_genes)
+de_genes <- denovo_genes[unique(hits@to)]
+
+
+# Calculate TPM for de novo gene assembly
+all_tpm <- apply(X = gene_counts, MARGIN = 2, FUN = countToTpm, effLen=geneLength)
+all_tpm <- log2(all_tpm+1)
+
+de_tpm <- all_tpm[rownames(all_tpm) %in% de_genes$gene_id, ] %>% reshape2::melt()
+
+de_tpm$Group <- pDat$Group[match(de_tpm$Var2, pDat$Library)]
+de_tpm$Sample <- pDat$Library[match(de_tpm$Var2, pDat$Library)]
+de_tpm$Group <- factor(de_tpm$Group, levels=c("ESC", "Primed", "Naive", "TNT", "N2P", "Fibroblast"))
+de_tpm$Donor <- pDat$Donor[match(de_tpm$Var2, pDat$Library)]
+
+gg_box <- ggplot(de_tpm, aes(x = Sample, y = value)) +
+        geom_jitter(alpha=0.2) +
+        ylab("log2 CPM") + xlab("") +
+        geom_violin() +
+        geom_boxplot(outlier.colour = NA, fill=NA) +
+        facet_grid(.~Donor+Group, drop = TRUE, space = "free", scales = "free")
+        ggtitle(title) + sams_pub_theme()
+
+```
+
+
+

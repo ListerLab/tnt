@@ -1,0 +1,864 @@
+---
+title: "MEL1 ESC differential expression analysis"
+author: "Sam Buckberry"
+date: "16/06/2020"
+output: html_document
+---
+
+---
+title: "Differential expression analysis of iPSCs generated from adult donor fibroblasts"
+date: "`r Sys.Date()`"
+author: "Sam Buckberry"
+output: github_document
+---
+
+```{r setup, echo=FALSE, cache=FALSE, warning=FALSE}
+library(knitr)
+
+## Global options
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+```
+
+# Differential expression analysis
+
+## Preliminaries
+
+Load the libraries and scripts
+```{r, message=FALSE, warning=FALSE}
+# Differential expression testing
+library(limma)
+library(edgeR)
+library(magrittr)
+library(ggplot2)
+library(stringr)
+library(reshape2)
+library(gridExtra)
+library(cowplot)
+library(tidyr)
+library(jsonlite)
+library(gprofiler2)
+```
+
+Load the script that contains functions used in the project
+```{r, message=FALSE, warning=FALSE}
+source("R/project_functions.R")
+```
+
+## Load the RNA-seq count data and associated sample meta-data
+
+Read the RNA-seq sample meta-data table 
+```{r}
+sample_dat <- fread("../human_ips/RNAseq/polyA/polyA_RNAseq_sample_table.tsv")
+sample_dat$model_group <- str_c(sample_dat$Group, sample_dat$Donor, sep = "_")
+```
+
+Read the sample count tables generated with `TEcount` and combine into matrix
+```{r}
+# List the counts tables for all samples
+cnt_files <- list.files(path = "../human_ips/RNAseq/polyA/aligned_data/", full.names = TRUE, pattern = ".cntTable")
+
+# Select the donor datasets
+cnt_files <- cnt_files[grepl(pattern = "MEL1", cnt_files)]
+
+dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>% do.call(cbind, .)
+libs <- colnames(dat2) %>%
+    str_remove("X.home.sbuckberry.working_data_02.polo_project.human_ips.RNAseq.polyA.aligned_data.") %>%
+    str_sub(start = 1, end = 6)
+colnames(dat2) <- libs
+```
+
+Ensure the sample meta-data table is in the same order and the read count data
+```{r}
+sample_dat$group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+sample_dat$sample_id <- str_c(sample_dat$Timepoint, sample_dat$Donor, sample_dat$Media, sep = "_")
+sample_dat$sample_id[duplicated(sample_dat$sample_id)] <- str_c(sample_dat$sample_id[duplicated(sample_dat$sample_id)], "_1")
+sample_dat$model_group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+pDat <- sample_dat[match(colnames(dat2), sample_dat$Library), ]
+
+# Is the meta data and expression data in the same order?
+all(pDat$Library == colnames(dat2))
+```
+
+Read in the count data and find specific TE's with counts
+```{r, fig.height=14}
+
+y <- DGEList(counts = dat2)
+y$samples <- cbind(y$samples, pDat)
+
+y2 <- y[ ,y$samples$Donor %in% c("MEL1")]
+
+design <- model.matrix(~Group, data=y2$samples)
+colnames(design) <- str_remove(string = colnames(design), pattern = "Group")
+
+
+keep <- filterByExpr(y2, design)
+table(keep)
+y2 <- y2[keep, ,keep.lib.sizes=FALSE]
+y2 <- calcNormFactors(y2)
+
+y2 <- estimateDisp(y2, design = design, robust = TRUE)
+plotBCV(y2)
+```
+
+
+```{r}
+fit <- glmFit(y2, design)
+
+# list of contrasts for differential expression vs ESCs
+cont_list <- list(ESC_vs_Fibroblast=c(0,-1,0,0,0,0),
+                  ESC_vs_N2P=c(0,0,-1,0,0,0),
+                  ESC_vs_Naive=c(0,0,0,-1,0,0),
+                  ESC_vs_Primed=c(0,0,0,0,-1,0),
+                  ESC_vs_TNT=c(0,0,0,0,0,-1),
+                  Primed_vs_TNT=c(0,0,0,0,1,-1),
+                  Primed_vs_N2P=c(0,0,-1,0,1,0),
+                  Primed_vs_Fibroblast=c(0,-1,0,0,1,0),
+                  TNT_vs_Fibroblast=c(0,-1,0,0,0,1))
+
+# Calculate differential expression, then subset for TE's and re-calculate FDR
+calc_de <- function(cont){
+        cont <- unlist(cont)
+        lrt <- glmLRT(fit, contrast = cont)
+        tt <- topTags(lrt, n = nrow(y))
+        tt_table <- tt$table
+        tt_table$gene_id <- rownames(tt_table)
+        tt_table$contrast <- tt$comparison
+        return(tt_table)
+}
+
+tt_list <- lapply(cont_list, calc_de)
+
+tt_all <- do.call(rbind, tt_list)
+tt_all$significant <- (abs(tt_all$logFC) > 1) & (tt_all$FDR < 0.05) & (tt_all$logCPM > 0)
+tt_all$significant <- ifelse(test = tt_all$significant, yes = "Significant", no = "NS")
+tt_all$significant <- factor(tt_all$significant, levels = c("NS", "Significant"))
+```
+
+
+Make Glimma plots
+
+```{r}
+# 
+# glimma_de <- function(x){
+#         cont <- cont_list[x] %>% unlist()
+#         main <- names(cont_list)[x]
+#         lrt <- glmLRT(fit, contrast = cont)
+#         Glimma::glimmaMA(lrt, dge=y2, groups=y2$samples$Group,
+#                          main=main, p.adj.method = "fdr",
+#                          html=paste0("glimma-plots/", main, "_de_genes.html"))
+# }
+# 
+# lapply(1:length(cont_list), glimma_de)
+# 
+# 
+# 
+# 
+# 
+# te_anno <- te_de_df[ ,c("class", "family", "gene", "transcript", "id")]
+# keep_row <- !duplicated.default(te_anno$id)
+# te_anno <- te_anno[keep_row, ]
+# #te_anno <- te_anno[te_anno$id %in% rownames(te_counts), ]
+# rownames(te_anno) <- te_anno$id
+# te_anno$GeneID <- te_anno$transcript
+# nrow(te_anno)
+# 
+# te_counts <- y2$counts[grepl(pattern = ":", rownames(y2$counts)), ]
+# te_counts <- te_counts[rownames(te_counts) %in% te_anno$id, ]
+# nrow(te_counts)
+# 
+# #ind <- match(rownames(te_counts), sub_te_de_df$gene_id)
+# 
+# #sample_id <- 
+# 
+# glimmaMA(x = )
+# 
+# 
+# make_te_glimma <- function(contrast="ESC_vs_Primed", launch = TRUE){
+# 
+#     sub_te_de_df <- te_de_df[te_de_df$contrast == contrast, ]
+#     
+#     # Fix direction of change and set significance
+#     sub_te_de_df$logFC <- -sub_te_de_df$logFC
+#     
+#     sub_te_de_df$status <- 0
+#     sub_te_de_df$status[sub_te_de_df$significant == "Significant" &
+#                             sub_te_de_df$Direction == "Up"] <- -1
+#     sub_te_de_df$status[sub_te_de_df$significant == "Significant" &
+#                             sub_te_de_df$Direction == "Down"] <- 1
+#     
+#     sub_te_de_df$GeneID <- sub_te_de_df$id
+#     
+#     
+#     # Set the order of the data.frames 
+#     ind <- match(sub_te_de_df$id, rownames(te_counts))
+#     
+#     sub_counts <- te_counts[ind, ]
+#     all(rownames(sub_counts) == sub_te_de_df$id)
+#     all(rownames(sub_counts) == rownames(sub_te_de_df))
+#     
+#     rownames(sub_te_de_df) <- sub_te_de_df$id
+#     
+#     # Get the annotation data and set order
+#     sub_annot <- te_anno[te_anno$id %in% sub_te_de_df$GeneID, ]
+#     sub_annot <- sub_annot[match(rownames(sub_counts), rownames(sub_annot)), ]
+# 
+#     
+#     # Ensure everything is in the correct order
+#     all(rownames(sub_counts) == rownames(sub_te_de_df))
+#     all(rownames(sub_annot) == rownames(sub_counts))
+#     
+#     # Modify group names for plots
+#     groups <- y2$samples$Group
+#     groups[groups == "N2P"] <- "NtP"
+#     
+#     colnames(sub_te_de_df)[colnames(sub_te_de_df) == "gene"] <- "TE"
+#     colnames(sub_te_de_df)[colnames(sub_te_de_df) == "transcript"] <- "TE_copy"
+#     
+#     glMDPlot(x = sub_te_de_df, path = "glimma-plots",
+#              folder = str_c("TE_", contrast), launch = launch,
+#              xval="logCPM", yval = "logFC", transform = TRUE,
+#              counts = sub_counts, anno=sub_annot,
+#              main=str_c("TE differential expression \n", contrast),
+#          side.ylab = "logCPM", 
+#          groups = factor(groups, levels=c("ESC", "Primed", "TNT",
+#                                                          "NtP", "Naive",
+#                                                     "Fibroblast")),
+#          samples = makeUnique(y2$samples$Group),
+#          status = matrix(sub_te_de_df$status),
+#          display.columns=c("class", "family", "TE", "TE_copy", "seqnames",
+#                            "start", "end", "PValue", "FDR"),
+#          cols=c("firebrick", "grey", "firebrick")
+#          )
+# }
+# 
+# 
+# make_te_glimma("ESC_vs_Primed", launch = TRUE)
+# make_te_glimma("ESC_vs_TNT", launch = FALSE)
+# make_te_glimma("ESC_vs_N2P", launch = FALSE)
+# make_te_glimma("Primed_vs_TNT", launch = FALSE)
+# make_te_glimma("Primed_vs_N2P", launch = FALSE)
+# make_te_glimma("ESC_vs_Naive", launch = FALSE)
+# make_te_glimma("ESC_vs_Fibroblast", launch = FALSE)
+```
+
+
+Inspect the number of intersecting significant DE genes
+```{r}
+get_de <- function(x, lfc=1, p=0.05, cpm_cut=0){
+        tt_de <- tt_list[x]
+        tt_cont <- names(tt_de)
+        sig_genes <- rownames(tt_de[[1]])[abs(tt_de[[1]]$logFC) >= lfc &
+                                                  tt_de[[1]]$logCPM >= cpm_cut &
+                                                  tt_de[[1]]$FDR < p]
+        
+        return(sig_genes)
+}
+
+
+sig_genes <- lapply(1:length(tt_list), get_de)
+
+all_sig_genes <- unlist(sig_genes) %>% unique() 
+
+# Remove the ERCC spike-in genes
+all_sig_genes <- all_sig_genes[!grepl(pattern = "ERCC-", x = all_sig_genes)]
+
+get_olaps <- function(x){
+        hit <- (all_sig_genes %in% sig_genes[[x]]) + 0
+        
+        return(hit)
+}
+
+sig_gene_hits <- lapply(1:length(sig_genes), get_olaps) %>% do.call(cbind, .) %>% data.frame()
+rownames(sig_gene_hits) <- all_sig_genes
+colnames(sig_gene_hits) <- names(tt_list)
+```
+
+Inspect the intersecting DE genes and TEs between groups with UpSet plots
+```{r}
+# Split by genes and TE's
+is_te <- grepl(pattern = ":", x = rownames(sig_gene_hits))
+
+pdf("RNAseq/plots/MEL1_de_genes_upset.pdf", width = 5, height = 3)
+upset(sig_gene_hits[!is_te, ], order.by = "freq",
+      set_size.show = TRUE, nintersects = 32, nsets = ncol(sig_gene_hits))
+
+upset(sig_gene_hits[is_te, ], order.by = "freq", nsets = ncol(sig_gene_hits),
+      set_size.show = TRUE, nintersects = 12)
+
+upset(sig_gene_hits[!is_te, c("ESC_vs_Fibroblast", 
+                              "Primed_vs_Fibroblast",
+                              "TNT_vs_Fibroblast")],
+      order.by = "freq",
+      set_size.show = TRUE, nintersects = 32,
+      nsets = ncol(sig_gene_hits))
+
+dev.off()
+
+upset(sig_gene_hits[!is_te, ], order.by = "freq",
+      set_size.show = TRUE, nintersects = 32, nsets = ncol(sig_gene_hits))
+
+upset(sig_gene_hits[is_te, ], order.by = "freq", nsets = ncol(sig_gene_hits),
+      set_size.show = TRUE, nintersects = 12)
+
+upset(sig_gene_hits[!is_te, c("ESC_vs_Primed", "Primed_vs_Fibroblast")], order.by = "freq",
+      set_size.show = TRUE, nintersects = 32, nsets = ncol(sig_gene_hits))
+```
+
+In the transposable element upset plot, we can see there are a number of TE's that are different in the primed group. So lets create table of DE TE's
+```{r}
+sig_gene_hits[is_te & sig_gene_hits$ESC_vs_Primed == 1 & sig_gene_hits$Primed_vs_TNT == 1 & sig_gene_hits$Primed_vs_N2P == 1, ]
+```
+
+Volcano and MA plot functions
+```{r}
+plot_tt_volcano <- function(x, fdr=0.05,
+                            p=0.01, lfc=1, ids=""){
+        
+        tt <- tt_list[[x]]
+        
+        title <- names(tt_list)[x]
+        
+        tt$Sig <- tt$FDR < fdr 
+        tt$delta <- abs(tt$logFC) > lfc
+        tt$pass <- (tt$Sig + tt$delta) == 2 
+        tt$TE <- ifelse(test = grepl(pattern = ":", x = rownames(tt)), yes = "TE's", no = "Genes") 
+        
+        #tt_sig <- tt[tt$pass, ]
+        #n_up <- (tt_sig$logFC > 0) %>% sum()
+        #n_down <- (tt_sig$logFC < 0) %>% sum()
+        
+        id_dat <- tt[rownames(tt) %in% ids, ]
+        id_dat$Gene <- rownames(id_dat)
+        
+        set.seed(12)
+        ggplot(data = tt, aes(x = logFC, y = -log10(PValue), colour=pass)) +
+                geom_vline(xintercept = c(-lfc, lfc), linetype="dashed") +
+                #geom_hline(yintercept = -log10(p), linetype="dashed") +
+                facet_grid(.~TE) +
+                ggtitle(title) +
+                geom_point(alpha=0.5, size=1) +
+                ylab("-log10 P-Value") +
+                xlab("Fold-change (log2)") +
+                xlim(c(floor(0-abs(max(tt$logFC))), ceiling(0+max(abs(tt$logFC))))) +
+                geom_label_repel(data = id_dat, aes(label = Gene,
+                                                    x = logFC,
+                                                    y = -log10(PValue)),
+                                 box.padding   = 0.35,
+                                 point.padding = 0.5,
+                                 segment.color = 'grey20',
+                                 color="grey20",
+                                 fill=NA) +
+                scale_color_manual(values = vitC[c(1,6)], name="FDR < 0.05")
+}
+
+plot_tt_ma <- function(x, fdr=0.05,
+                            p=0.01, lfc=1, ids=""){
+        
+        tt <- tt_list[[x]]
+        
+        title <- names(tt_list)[x]
+        
+        tt$Sig <- tt$FDR < fdr 
+        tt$delta <- abs(tt$logFC) > lfc
+        tt$cpm <- tt$logCPM > 0
+        tt$pass <- (tt$Sig + tt$delta + tt$cpm) == 3 
+        tt$pass <- factor(tt$pass, levels=c("FALSE", "TRUE"))
+        tt$TE <- ifelse(test = grepl(pattern = ":", x = rownames(tt)), yes = "TE's", no = "Genes") 
+        
+        id_dat <- tt[rownames(tt) %in% ids, ]
+        id_dat$Gene <- rownames(id_dat)
+        
+        tt <- tt[order(tt$pass, -log10(tt$PValue)), ]
+        
+        gg <- ggplot(data = tt, aes(x = logCPM, y = logFC, colour=pass)) +
+              facet_grid(.~TE) +
+              scale_colour_manual(values = c("grey", "firebrick")) +
+              geom_point(alpha=0.5, size=0.8) +
+              xlab("log CPM") + ylab("log fold change") +
+              geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+              geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
+              facet_grid(.~contrast, drop = TRUE, scales = "free_y", space = "free") +
+              theme(strip.text.y = element_text(angle = 0)) +
+              sams_pub_theme(x.text.angle = 0, legend_pos = "right") +
+                ggtitle(title) +
+                #xlim(c(floor(0-abs(max(tt$logCPM))), ceiling(0+max(abs(tt$logCPM))))) +
+                geom_label_repel(data = id_dat, aes(label = Gene, 
+                                                    x = logCPM,
+                                                    y = logFC),
+                                 nudge_y = 1, nudge_x = 5,
+        direction = "x",
+    angle        = 90,
+    vjust        = 0,
+    segment.size = 1)
+        return(gg)
+}
+```
+
+Inspect the magnitide and significane of gene and TE expresion differences between primed and ESC cells
+```{r}
+volc_primed <- plot_tt_volcano(x = 4, ids = c("HERVH-int:ERV1:LTR"))
+ma_primed <- plot_tt_ma(x = 4, ids = c("HERVH-int:ERV1:LTR", "LARGE"))
+
+# pdf("RNAseq/plots/MEL1_primed_vs_esc_volcano_and_ma_plots.pdf")
+# plot_grid(volc_primed, ma_primed, align = 'hv', nrow = 2, axis = 'lb')
+# dev.off()
+# 
+# 
+# pdf("RNAseq/plots/MEL1_esc_comparisons_ma_plots.pdf", width = 8, height = 2)
+# plot_grid(plot_tt_ma(4, ids = c("LARGE")), plot_tt_ma(5, ids = c("LARGE")), plot_tt_ma(2, ids = c("LARGE")), align = 'h', nrow = 1, axis = 'lb')
+# dev.off()
+
+
+tt_all$significant <- factor(tt_all$significant, levels=c("NS", "Significant"))
+tt_all <- tt_all[order(tt_all$significant, -log10(tt_all$PValue)), ]
+
+
+
+tt_all_sub <- tt_all[(tt_all$contrast %in% c("-1*Primed", "-1*TNT", "-1*N2P")), ]
+
+tt_all_sub$contrast <- factor(tt_all_sub$contrast, levels = c("-1*Primed", "-1*TNT", "-1*N2P"))
+
+# remove TE's and ERCC spike ins
+tt_all_sub <- tt_all_sub[!grepl(pattern = ":", tt_all_sub$gene_id), ]
+tt_all_sub <- tt_all_sub[!grepl(pattern = "ERCC", tt_all_sub$gene_id), ]
+
+id_dat <- tt_all_sub[tt_all_sub$gene_id %in% c("LARGE"), ]
+
+gg_ma <- ggplot(tt_all_sub,
+       aes(y = -logFC, x = logCPM, color=significant)) +
+        scale_colour_manual(values = c("grey", "firebrick")) +
+        geom_point(alpha=0.5, size=0.8) +
+        xlab("Log2 CPM") + ylab("Log2 fold change") +
+        geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
+        facet_grid(.~contrast, drop = TRUE, scales = "free_y", space = "free") +
+        theme(strip.text.y = element_text(angle = 0)) +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+pdf("RNAseq/plots/MEL1_esc_comparisons_ma_plots.pdf", width = 5, height = 1.5)
+gg_ma
+dev.off()
+
+```
+
+
+Now lets have a look at DE genes detected between ESCs and iPSCs in E8 media (Primed, TNT, and Naive-to-Primed)
+```{r}
+de_esc_ids <- rownames(sig_gene_hits)[rowSums(sig_gene_hits[ ,c("ESC_vs_N2P", "ESC_vs_Primed", "ESC_vs_TNT")]) >= 1] 
+de_esc_genes <- de_esc_ids[!grepl(":", de_esc_ids)]
+de_esc_te <- de_esc_ids[grepl(":", de_esc_ids)]
+```
+
+and plot heatmaps for DE genes and TEs
+Normalise the count data for plotting 
+```{r}
+norm_exprs <- cpm(y2, log = TRUE) %>% normalizeBetweenArrays(method = 'quantile')
+```
+
+```{r}
+plot_dendrogram(norm_exprs)
+```
+
+
+Make a heatmap of genes with differential expression in both or just one comparison
+```{r}
+annot_col <- pDat[ ,c(2,3,5)]
+colnames(norm_exprs) <- str_c(pDat$Group, pDat$Donor, pDat$Passage, sep = "_")
+rownames(annot_col) <- str_c(pDat$Group, pDat$Donor, pDat$Passage, sep = "_") %>% make.unique(sep = "_")
+
+pheatmap(norm_exprs[rownames(norm_exprs) %in% de_esc_genes, pDat$Media != "t2iLGoY"],
+         fontsize_row = 5, main = str_c("DE genes n=", length(de_esc_genes)),
+         show_rownames = FALSE,
+         scale = 'row',
+         cluster_cols = TRUE, border_color = NA,
+         annotation_col = annot_col,
+         clustering_distance_cols = 'correlation')
+
+pdf("RNAseq/plots/MEL1_de_genes_heatmap.pdf", width = 4, height = 5)
+pheatmap(norm_exprs[rownames(norm_exprs) %in% de_esc_genes, pDat$Media == "E8"],
+         fontsize_row = 5, main = str_c("DE genes n=", length(de_esc_genes)), show_rownames = FALSE,
+         scale = 'row', cluster_cols = TRUE, border_color = NA,
+         annotation_col = annot_col, clustering_distance_rows = 'correlation',
+         clustering_distance_cols = 'correlation')
+
+pheatmap(norm_exprs[rownames(norm_exprs) %in% de_esc_te, pDat$Media == "E8"],
+         fontsize_row = 7, main = "DE Transposable Elements",
+         scale = 'row', cluster_cols = TRUE, border_color = NA,
+         annotation_col = annot_col, clustering_distance_rows = 'correlation',
+         clustering_distance_cols = 'correlation')
+dev.off()
+```
+
+Perform some ontology / pathway enrichment testing of DE genes
+```{r}
+# up genes are where expression is higher in primed compared to ESCs
+# down genes are where expression is lower in primed compared to ESCs
+
+down_genes <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*Primed" & tt_all$logFC >= 1]
+up_genes <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*Primed" & tt_all$logFC <= 1]
+
+# Remove TE's for ontology
+up_genes <- up_genes[!grepl(":", up_genes)]
+down_genes <- down_genes[!grepl(":", down_genes)]
+
+gost_up <- gost(query = up_genes, custom_bg = unique(rownames(tt_list$ESC_vs_Primed)), evcodes=TRUE)
+gost_up_table <- gost_up$result
+
+gost_down <- gost(query = down_genes, custom_bg = unique(rownames(tt_list$ESC_vs_Primed)), evcodes=TRUE)
+gost_down_table <- gost_down$result
+
+gost_up <- gost(query = up_genes, custom_bg = unique(rownames(tt_list$ESC_vs_Primed)), as_short_link = TRUE)
+
+gost_down <- gost(query = down_genes, custom_bg = unique(rownames(tt_list$ESC_vs_Primed)), as_short_link = TRUE)
+
+pheatmap(norm_exprs[rownames(norm_exprs) %in% down_genes, pDat$Media == "E8"],
+         fontsize_row = 7, main = "DE Transposable Elements",
+         scale = 'row', cluster_cols = TRUE, border_color = NA,
+         annotation_col = annot_col, clustering_distance_rows = 'correlation',
+         clustering_distance_cols = 'correlation')
+
+```
+
+
+```{r}
+primed_down <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*Primed" & tt_all$logFC >= 1]
+primed_down[!grepl(pattern = "ERCC", primed_down)] %>% length()
+
+primed_up <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*Primed" & tt_all$logFC <= 1]
+primed_up[!grepl(pattern = "ERCC", primed_up)] %>% length()
+
+tnt_down <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*TNT" & tt_all$logFC >= 1]
+tnt_down[!grepl(pattern = "ERCC", tnt_down)] %>% length()
+
+tnt_up <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*TNT" & tt_all$logFC <= 1]
+tnt_up[!grepl(pattern = "ERCC", tnt_up)] %>% length()
+
+N2P_down <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*N2P" & tt_all$logFC >= 1]
+N2P_down[!grepl(pattern = "ERCC", N2P_down)] %>% length()
+
+N2P_up <- tt_all$gene_id[tt_all$significant == "Significant" & tt_all$contrast == "-1*N2P" & tt_all$logFC <= 1]
+N2P_up[!grepl(pattern = "ERCC", N2P_up)] %>% length()
+```
+
+```{r}
+txdb <- makeTxDbFromGFF(file = "resources/genes.gtf.gz", format = "gtf")
+gene_gr <- genes(txdb)
+
+primed_up_gr <- gene_gr[gene_gr$gene_id %in% primed_up]
+primed_down_gr <- gene_gr[gene_gr$gene_id %in% primed_down]
+
+gr_to_bed(primed_up_gr, "RNAseq/processed_data/MEL1_primed_up_gene_body.bed")
+gr_to_bed(primed_down_gr, "RNAseq/processed_data/MEL1_primed_down_gene_body.bed")
+
+```
+
+
+
+
+Plots of individual genes of interest
+```{r}
+
+plot_gene <- function(id, exprs_dat=cpm(y, log = TRUE), annot_data=pDat){
+        
+        id_dat <- exprs_dat[rownames(exprs_dat) == id, ] %>% data.frame()
+
+        id_dat$library <- rownames(id_dat) 
+        
+        ind <- match(id_dat$library, annot_data$Library)
+        colnames(id_dat)[1] <- "value"
+        
+        id_dat$Group <- annot_data$Group[ind]
+        id_dat$Group <- factor(id_dat$Group,
+                               levels=c("ESC", "Primed", "TNT", "N2P", "Naive", "Fibroblast"))
+        
+        id_dat$Donor <- annot_data$Donor[ind]
+        
+        # Summarize data
+        data_summary <- function(data, varname, groupnames, calc_sterr=TRUE){
+                require(plyr)
+                summary_func <- function(x, col, sem=FALSE){
+                        c(mean = mean(x[[col]], na.rm=TRUE),
+                        stdev = sd(x[[col]], na.rm=TRUE),
+                        sterr = sd(x[[col]], na.rm=TRUE) / sqrt(length(x[[col]])))
+                }
+                
+                data_sum<-ddply(data, groupnames, .fun=summary_func, varname)
+                data_sum <- rename(data_sum, c("mean" = varname))
+                return(data_sum)
+        }
+        
+        sum_dat <- data_summary(data = id_dat, varname="value", groupnames = c("Group"))
+        line_mm <- 0.5 / 2.835
+        gg_gene <- ggplot(id_dat, aes(x = Group, y = value)) +
+                geom_point(position =  position_nudge(x = -0.1, y = 0), alpha=0.5) +
+                #facet_grid(, drop = TRUE, scales = "free") +
+                ylab("Counts per million (Log2)") +
+                theme(strip.text.y = element_text(angle = 0)) +
+                stat_summary(fun = mean, position = position_nudge(x = 0.1, y = 0), size=0.2) +
+                geom_errorbar(data = sum_dat, aes(x = Group, y = value,
+                                                  ymin=value-sterr, ymax=value+sterr), width=.1,
+                              position=position_nudge(x = 0.1, y = 0)) +
+                ggtitle(label = id) +
+                
+                theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6,
+                                                 colour = 'black'),
+                      axis.text.y = element_text(size=6, colour='black', angle = 0),
+                      strip.text.y = element_text(size = 6),
+                      text = element_text(size=6),
+                      strip.background = element_blank(),
+                      axis.line.x = element_line(color = 'black', size = line_mm),
+                      axis.line.y = element_line(color = 'black', size = line_mm),
+                      axis.ticks = element_line(color = 'black', size = line_mm))
+        return(gg_gene)
+}
+
+# list maintenance of pluripotency genes from ontology analysis
+gost_up_table[grepl("mesoderm", gost_up_table$term_name), ]
+
+mesoderm_dev_genes <- gprofiler2::gconvert(query = c("Fibroblast"), target = "HGNC")
+
+mesoderm_dev_genes <- gprofiler2::gconvert(query = c("GO:0007498","GO:0048145",
+                                                     "GO:0017134", "GO:0072537",
+                                                     "GO:0005104"), target = "HGNC")
+
+gconvert(query = c("GO:0007498","GO:0048145", "GO:0017134", "GO:0072537",
+                                                     "GO:0005104"), target = "GO")
+
+up_genes[up_genes %in% mesoderm_dev_genes$target]
+
+norm_exprs2 <- cpm(y2, log = TRUE, prior.count = 1)
+plotMDS(y2, top = 500)
+colnames(norm_exprs2) <- y2$samples$Sample
+
+mesoderm_dev_genes_sub <- mesoderm_dev_genes[mesoderm_dev_genes$target %in% c(primed_up, primed_down), ]
+
+pdf(file = "RNAseq/plots/mesoderm_de_genes_heatmap.pdf", width = 3, height = 5)
+pheatmap(norm_exprs2[rownames(norm_exprs2) %in% mesoderm_dev_genes_sub$target, -c(3,12)], fontsize = 6,
+         scale='row', clustering_distance_cols = 'correlation',
+         clustering_distance_rows = "correlation",
+         border_color = NA)
+dev.off()
+```
+
+```{r}
+wb_ed_fig7 <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig7, sheetName = "ED_Fig_7c")
+openxlsx::writeData(wb = wb_ed_fig7, sheet = "ED_Fig_7c",
+                    x = norm_exprs2[rownames(norm_exprs2) %in% mesoderm_dev_genes_sub$target, -c(3,12)])
+```
+
+
+Reviewer 4: What fibroblast-sepcific genes retain their expression in hiPSCs?
+```{r}
+upset(sig_gene_hits[!is_te, c("ESC_vs_Fibroblast", 
+                              "Primed_vs_Fibroblast",
+                              "TNT_vs_Fibroblast")],
+      order.by = "freq",
+      set_size.show = TRUE, nintersects = 32,
+      nsets = ncol(sig_gene_hits))
+```
+
+
+```{r}
+fib_specific <- sig_gene_hits[!is_te, c("ESC_vs_Fibroblast", "Primed_vs_TNT",
+                              "Primed_vs_Fibroblast")]
+
+
+## Get fibroblast up-regulated
+tt_fib <- tt_all[tt_all$contrast == "-1*Fibroblast", ]
+tt_fib <- tt_fib[tt_fib$logFC < 0 & tt_fib$significant == "Significant", ]
+
+fib_specific <- fib_specific[fib_specific$Primed_vs_Fibroblast == 0 & 
+                                 fib_specific$Primed_vs_TNT == 1 &
+                                 fib_specific$ESC_vs_Fibroblast == 1, ]
+
+fib_specific <- fib_specific[rownames(fib_specific) %in% tt_fib$gene_id, ]
+
+y2 <- y[ ,-c(3,12)]
+
+exprs_dat <- cpm(y2, log = TRUE) #%>% normalizeBetweenArrays(method = "quantile")
+colnames(exprs_dat) <- str_c(y2$samples$Group, "_", y2$samples$Passage)
+
+exprs_dat_sub <- data.frame(exprs_dat[rownames(exprs_dat) %in% rownames(fib_specific), ])
+
+esc_means <- rowMeans(exprs_dat_sub[ ,c("ESC_P13plus20", "ESC_P13plus14")])
+fib_means <- rowMeans(exprs_dat_sub[ ,c("Fibroblast_P20plus3", "Fibroblast_P8")])
+
+fib_delta <- esc_means - fib_means
+
+exprs_dat_sub <- exprs_dat_sub[order(fib_delta), ]
+
+pdf(file = "RNAseq/plots/MEL1_de_genes_fibroblast_specific.pdf",
+    width = 3, height = 4)
+pheatmap(exprs_dat_sub, 
+         border_color = NA,
+         show_rownames = FALSE, scale = 'row')
+dev.off()
+
+gost_fibroblast <- gprofiler2::gost(query = rownames(exprs_dat_sub), organism = "hsapiens")
+gost_fibroblast <- gost_fibroblast$result
+```
+
+
+```{r}
+openxlsx::addWorksheet(wb_ed_fig7, sheetName = "ED_Fig_7e")
+openxlsx::writeData(wb = wb_ed_fig7, sheet = "ED_Fig_7e",
+                    x = exprs_dat_sub)
+openxlsx::saveWorkbook(wb = wb_ed_fig7,
+                       file = "ED_Figure_7ce_source_data.xlsx", overwrite = TRUE)
+```
+
+
+Get DE genes for Primed-hiPSCs and then get closest CG-DMR
+```{r}
+
+primed_gene <- c(primed_up, primed_down)
+
+primed_gene_gr <- gene_gr[gene_gr$gene_id %in% primed_gene]
+
+mel1_dmrs <- readRDS("wgbs/dmrs/MEL1_dmrs/dmr_out/esc_vs_primed_dmrseq_dmrs.Rds")
+
+process_dmr <- function(dmr_obj){
+    
+    # make mCG matrix
+    bsseq_fls <- basename(dmr_obj$manifest_data$rds_path)
+    bsseq_fls <- str_c("wgbs/CG_bsobj/", bsseq_fls)    
+    
+    mC_dat <- make_mC_matrix(obj_fls = bsseq_fls,
+                             gr = dmr_obj$dmr_granges,
+                             cores = 3)
+    
+    ind <- match(colnames(mC_dat), basename(dmr_obj$manifest_data$rds_path))
+    colnames(mC_dat) <- dmr_obj$manifest_data$id[ind]
+    
+    ## Calculate delta for groups
+    groups <- unique(dmr_obj$manifest_data$group)
+    g1_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[1]])
+    g2_mean <- rowMeans(mC_dat[ ,dmr_obj$manifest_data$group == groups[2]])
+    group_delta <- g1_mean - g2_mean
+    
+    ## Setup mcols for output
+    df <- data.frame(g1_mean = g1_mean, g2_mean = g2_mean, delta = group_delta)
+    
+    mcols(dmr_obj$dmr_granges) <- cbind(mcols(dmr_obj$dmr_granges), df, mC_dat)
+    
+    return(dmr_obj)
+}
+
+mel1_dmrs <- process_dmr(dmr_obj = mel1_dmrs)
+
+mel1_dmrs <- mel1_dmrs$dmr_granges[abs(mel1_dmrs$dmr_granges$delta) > 0.2 &
+                           mel1_dmrs$dmr_granges$qval < 0.05]
+
+dists <- distanceToNearest(primed_gene_gr, subject = mel1_dmrs)
+
+## limit to DMRs within 500kb 
+primed_gene_gr <- primed_gene_gr[dists@elementMetadata$distance < 500000]
+
+dmr_near <- nearest(primed_gene_gr, subject = mel1_dmrs)
+
+mel1_dmr_sub <- mel1_dmrs[dmr_near]
+
+mdat <- 
+
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")    
+    
+dmr_mat <- make_mC_matrix(obj_fls = mdat$BSseq_CG[mdat$Background == "MEL1"],
+                          gr = mel1_dmr_sub, cores = 4)
+colnames(dmr_mat) <- mdat$Manuscript.Name[mdat$Background == "MEL1"]
+
+pheatmap(dmr_mat, show_rownames = FALSE, colorRampPalette(c("navy", "white", "firebrick3"))(50))
+```
+
+
+Heatmap mesoderm development genes
+```{r}
+mesoderm_go_terms <- c("GO:0007498")
+
+
+
+
+enh_dat <- read.table(file = "resources/hg19_USCS_geneHancerClusteredInteractionsDoubleElite.txt")
+enh_gene_gr <- GRanges(seqnames = enh_dat$V9, ranges = IRanges(start = enh_dat$V10, end = enh_dat$V11))
+enh_gene_gr$gene <- enh_dat$V17
+enh_gene_gr$score <- enh_dat$V5
+enh_gene_gr$loci <- gr_to_loci(enh_gene_gr)
+
+table(mesoderm_dev_genes$target %in% enh_gene_gr$gene)
+
+enh_gene_gr_meso <- enh_gene_gr[enh_gene_gr$gene %in% mesoderm_dev_genes$target]
+
+## Calculate mCG/CG
+
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+mdat <- mdat[mdat$Background == "MEL1", ]
+
+enh_gene_gr_meso_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG,
+                                       gr = enh_gene_gr_meso, cores = 4)
+
+enh_gene_gr_meso_mCG <- enh_gene_gr_meso_mCG[complete.cases(enh_gene_gr_meso_mCG), ]
+
+pheatmap(enh_gene_gr_meso_mCG, show_rownames = FALSE, )
+```
+
+
+```{r}
+primed_up_ont <- gost(query = primed_up, organism = "hsapiens")
+primed_up_ont <- primed_up_ont$result
+```
+
+
+
+Plot selected mesoderm development genes that show differential expression
+```{r}
+pdf("RNAseq/plots/MEL1_mesoderm_genes_selected_point_plots.pdf", height = 3.5, width = 4)
+
+plot_grid(plot_gene(id = "BMP4", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)),
+          plot_gene(id = "FOXC1", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)), 
+          plot_gene(id = "MESP1", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)),
+          plot_gene(id = "WNT5A", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)),
+          plot_gene(id = "WNT3", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)),
+          plot_gene(id = "WNT11", exprs_dat = cpm(y[ ,-c(3,12)], log = TRUE)),
+          align = 'h', axis = 'b', nrow = 2, ncol = 3)
+dev.off()
+
+pdf("RNAseq/plots/LARGE_gene_plot_MEL1.pdf", height = 2, width = 2)
+plot_gene("LARGE")
+dev.off()
+
+### Plot genes from Koyanagi-Aoi et al.
+pdf("RNAseq/plots/Koyanagi-Aoi_gene_plot_MEL1.pdf", height = 1.5, width = 4)
+plot_grid(plot_gene(id = "HHLA1", exprs_dat = cpm(y[ ,-c(3,8,9,12)], log = TRUE)),
+          plot_gene(id = "ABHD12B", exprs_dat = cpm(y[ ,-c(3,8,9,12)], log = TRUE)), 
+          plot_gene(id = "C4orf51", exprs_dat = cpm(y[ ,-c(3,8,9,12)], log = TRUE)),
+          align = 'h', axis = 'b', nrow = 1, ncol = 3)
+dev.off()
+
+```
+
+
+
+# Exporting of results
+Export the DE results to .xlsx file
+```{r}
+library(openxlsx)
+all_de_results <- c(tt_list, list(DE_gene_overlaps=sig_gene_hits, Primed_higher_ontology=gost_up_table, Primed_lower_ontology=gost_down_table))
+write.xlsx(x = all_de_results, file = "RNAseq/processed_data/MEL1_differential_expression_results.xlsx",
+           append=TRUE, row.names=TRUE)
+```
+
+
+
+
+
+# Session Information
+```{r}
+sessionInfo()
+```
+

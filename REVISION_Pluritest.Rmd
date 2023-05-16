@@ -1,0 +1,170 @@
+---
+title: "PluriTest of isogenic hiPSC and hESC"
+author: "Sam Buckberry"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Load the script that contains functions used in the project
+```{r, message=FALSE, warning=FALSE}
+source("R/project_functions.R")
+```
+
+## Load the RNA-seq count data and associated sample meta-data
+
+Read the sample count tables generated with `TEcount` and combine into matrix
+```{r, cache=TRUE}
+sample_dat <- fread("RNAseq/polyA/polyA_RNAseq_sample_table.tsv")
+sample_dat$model_group <- str_c(sample_dat$Group, sample_dat$Donor, sep = "_")
+
+# List the counts tables for all samples
+cnt_files <- list.files(path = "RNAseq/polyA/MEL1_data/", full.names = TRUE, pattern = ".cntTable")
+
+# Select the donor datasets
+cnt_files <- cnt_files[grepl(pattern = "MEL1", cnt_files)]
+
+dat2 <- lapply(cnt_files, read.table, header = TRUE, row.names = 1) %>% do.call(cbind, .)
+libs <- colnames(dat2) %>%
+    str_remove("X.home.sbuckberry.working_data_02.polo_project.human_ips.RNAseq.polyA.aligned_data.") %>%
+    str_sub(start = 1, end = 6)
+colnames(dat2) <- libs
+
+sample_dat$group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+sample_dat$sample_id <- str_c(sample_dat$Timepoint, sample_dat$Donor, sample_dat$Media, sep = "_")
+sample_dat$sample_id[duplicated(sample_dat$sample_id)] <- str_c(sample_dat$sample_id[duplicated(sample_dat$sample_id)], "_1")
+sample_dat$model_group <- str_c(sample_dat$State, sample_dat$Media, sep = "_")
+pDat <- sample_dat[match(colnames(dat2), sample_dat$Library), ]
+
+# Is the meta data and expression data in the same order?
+all(pDat$Library == colnames(dat2))
+
+y <- DGEList(counts = dat2)
+y$samples <- cbind(y$samples, pDat)
+
+```
+
+
+
+# Pluritest
+
+Code from https://github.com/pluritest/pluritestCompared
+```{r, cache=TRUE}
+## Load the pluritest data from the manuscript
+load("pluritestCompared/working/NMETH-BC11016B-pluritestsub.rdata")
+
+featureNames(H9targetArray)<-fData(H9targetArray)[,1] # required for R3.x compatibility
+
+unzip(zipfile = "pluritestCompared/working/forLumi.txt.zip",exdir = "./working/")
+# definitions for plots and computations
+WA09<-c("WA09_r1_HS","WA09_r2_HS","WA09_r1_OO","WA09_r1_TEL","WA09_r2_OO","WA09_r2_TEL","WA09_r1_AE","WA09_r2_AE")
+UKSCB<-c( "Shef3_r1_OO","Shef3_r2_OO","Oxford2_r1_OO","Oxford2_r2_OO","I9_r1_OO","I9_r2_OO")
+Murdoch<- c("MEL1_INS_GFP_MG3_r1_AE","MEL1_INS_GFP_MG4_r1_AE","hES3_Mixl_GFP_r1_AE","hES3_Mixl_GFP_r2_AE","RM3","RM31" ) 
+Kyoto<- c( "Tig108_4f3_r1_HS","Tig108_4f3_r2_HS","iPS201B7_r1_HS", "iPS201B7_r2_HS","KhES.1_r1_HS","KhES.1_r2_HS" )
+Wicell<-  c("WA14_r1_JB","WA14_r2_JB","DF19.9.11T_4_r1_JB","DF19.9.11T_4_r2_JB","IMR90C4_r1_TEL","IMR90C4_r2_TEL")
+
+# load the modified pluritest script 
+# functionality has been removed to allow R2.11 - R 3.x compatibility 
+# different output handling. Original is available in original workspace
+source('pluritestCompared/pluritest_mod_file.R')
+
+# load the data using patched version of original pluritest script.
+# NormOnly provides only a normalized lumi object. 
+working.lumi1<-pluritest_mod("./working/forLumi.txt",NormOnly = TRUE)
+
+# Add a simple Correction Factor to the Pluritest Modelmatrices
+# This is very simple version of factor based batch effect removal as in RUV or SVA
+M<-exprs(working.lumi1)
+T<-exprs(H9targetArray)
+T<-T[rownames(W15),]
+M<-M[match(rownames(W15),rownames(M)),WA09]
+shifttemp<-apply(M,1,mean)-T
+shifttemp[is.na(shifttemp)] <- 0
+
+W15<-cbind(W15[],shifttemp)
+W12<-cbind(W12,shifttemp)
+
+## Convert gene IDs to Illumina IDs
+#pluridat <- read.table("~/Documents/GitHub/pluritest/project/data/RNA-seq_pluri.txt",
+#                       header = TRUE)
+
+## Load the expression counts and get corresponding array probes
+
+## Match the Gene IDs to the Illumina probe IDs from the pluritest paper
+ilmn_genes <- gprofiler2::gconvert(query = rownames(dat2),
+                                   target = "ILLUMINA_HUMANHT_12_V4")
+
+ilmn_genes <- ilmn_genes[ilmn_genes$target %in% fData(H9targetArray)[,1], ]
+
+dat_pluri <- dat2[rownames(dat2) %in% ilmn_genes$input, ]
+dat_pluri <- cpm(dat_pluri, log = TRUE)
+#dat_pluri <- voom(dat_pluri, normalize.method = "quantile")$E
+
+ind <- match(ilmn_genes$input, rownames(dat_pluri))
+dat_pluri <- dat_pluri[ind, ]
+all(rownames(dat_pluri) == ilmn_genes$input)
+rownames(dat_pluri) <- ilmn_genes$target
+
+cpms <- dat_pluri
+
+M <- cpms
+Tr <- exprs(H9targetArray)
+Tr <- Tr[rownames(W15), ]
+M <- M[match(rownames(W15), rownames(M)), ]
+shifttemp<-apply(M, 1, mean) - Tr
+shifttemp[is.na(shifttemp)] <- 0
+
+W15 <- cbind(W15[], shifttemp)
+W12 <- cbind(W12, shifttemp)
+
+### Code from https://github.com/pluritest/pluritestCompared/blob/master/pluritest_mod_file.R
+
+	#RSN NORMALIZATION OF THE DATA
+	A <- rownames(cpms)  #matches on ILMN_Ids for lumi/RSN
+	B <- fData(H9targetArray)[,1] #for matches on ILMN_Ids for lumi/RSN
+	sel.match <- match(B,A)
+
+    sel <- match(rownames(W15), A)
+    
+    working.lumi.int  <- cpms[sel[!is.na(sel)], ]
+    
+    coef <- c(-126.7095, 0.004567437, 0.004377068, 0.001043193)
+    H15.new <- predictH(working.lumi.int, W15[!is.na(sel), ])
+    H12.new <- predictH(working.lumi.int, W12[!is.na(sel), ])
+    rss.new <- apply((working.lumi.int - W12[!is.na(sel), ] %*% H12.new)^2, 2, sum)
+    RMSE.new <- sqrt(rss.new/sum(!is.na(sel)))
+    novel.new <- apply((working.lumi.int - W12[!is.na(sel), ] %*% H12.new)^8, 2, sum)
+    novel.new <- (novel.new/sum(!is.na(sel)))^(1/8)
+    s.new <- drop(coef[1] + coef[2:4] %*% H15.new[c(1, 14, 13), ])
+
+    table.results <- matrix(NA,nrow = ncol(working.lumi.int), ncol = 5)
+  rownames(table.results) <- colnames(working.lumi.int)
+  colnames(table.results) <- c("pluri-raw", "pluri logit-p", "novelty",
+                               "novelty logit-p", "RMSD")
+	
+    table.results[, 1] <- round(s.new, 3)
+  table.results[, 2] <- round(exp(s.new)/(1 + exp(s.new)),3)
+  table.results[, 3] <- round(novel.new, 3)
+  table.results[, 5] <- round(RMSE.new, 3)	
+  
+pluri_df <- data.frame(table.results)
+pluri_df$group <- y$samples$Group
+```
+
+```{r}
+gg_pluri <- ggplot(data = pluri_df, aes(y = pluri.raw,
+                                        x = novelty, colour=group)) +
+    geom_point(size=2, alpha=0.8) + sams_pub_theme(legend_pos = "right", x.text.angle = 0,
+                                        hjust = 0.5) +
+    ylab("Pluripotency score") + xlab("Novelty score")
+
+
+pdf("RNAseq/plots/pluritest_point.pdf", width = 3, height = 2)
+gg_pluri
+dev.off()  
+ 
+
+gg_nov <- ggplot(pluri_df[!pluri_df$group %in% c("Fibroblast", "Naive"), ], aes(x = group, y = novelty)) +
+    geom_point()
+```
+
+
