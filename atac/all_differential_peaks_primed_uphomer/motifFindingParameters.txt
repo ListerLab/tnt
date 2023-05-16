@@ -1,0 +1,1 @@
+cmd = /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_up.bed hg19 /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks_primed_uphomer/ -size given -p 20
