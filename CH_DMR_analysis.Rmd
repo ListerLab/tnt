@@ -525,6 +525,37 @@ dev.off()
 
 ```
 
+
+```{r}
+nhek_c_pl$pp01$data
+fib_c_pl$pp01$data
+msc_c_pl$pp01$data
+
+wb_ed_fig9g <- openxlsx::createWorkbook()
+
+openxlsx::addWorksheet(wb_ed_fig9g, sheetName = "ED_Fig_9g_hdf")
+openxlsx::writeData(wb = wb_ed_fig9g, sheet = "ED_Fig_9g_hdf",
+                    x = fib_c_pl$pp01$data)
+
+openxlsx::addWorksheet(wb_ed_fig9g, sheetName = "ED_Fig_9g_nhek")
+openxlsx::writeData(wb = wb_ed_fig9g, sheet = "ED_Fig_9g_nhek",
+                    x = nhek_c_pl$pp01$data)
+
+openxlsx::addWorksheet(wb_ed_fig9g, sheetName = "ED_Fig_9g_msc")
+openxlsx::writeData(wb = wb_ed_fig9g, sheet = "ED_Fig_9g_msc",
+                    x = msc_c_pl$pp01$data)
+
+openxlsx::saveWorkbook(wb = wb_ed_fig9g,
+                       file = "ED_Figure_9g_source_data.xlsx", overwrite = TRUE)
+
+
+
+openxlsx::saveWorkbook(wb = wb_ed_fig1,
+                       file = "ED_Figure_1_source_data.xlsx", overwrite = TRUE)
+
+```
+
+
 Primed-Naive-Primed analysis
 ```{r}
 
@@ -591,7 +622,7 @@ pnp <- c("RL3073", "RL3074", "RL3075")
             tt$batch <- toString(batch)
             tt$lab <- "Lister"
             tt$background <- toString(background)
-            return(tt)
+            #return(tt)
 
 
     #tt <- lapply(1:ncol(cont), get_tt) %>% do.call(rbind, .)

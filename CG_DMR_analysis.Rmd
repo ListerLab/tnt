@@ -203,6 +203,14 @@ pheatmap(fib_dmr_mCG[complete.cases(fib_dmr_mCG), ],
 dev.off()
 
 ```
+```{r}
+wb_ed_fig9f <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig9f, sheetName = "ED_Fig_9f_hdf")
+openxlsx::writeData(wb = wb_ed_fig9f, sheet = "ED_Fig_9f_hdf",
+                    x = fib_dmr_mCG[complete.cases(fib_dmr_mCG), ])
+```
+
+
 
 ### MSCs
 
@@ -230,6 +238,13 @@ dev.off()
 ```
 
 
+```{r}
+openxlsx::addWorksheet(wb_ed_fig9f, sheetName = "ED_Fig_9f_msc")
+openxlsx::writeData(wb = wb_ed_fig9f, sheet = "ED_Fig_9f_msc",
+                    x = msc_dmr_mCG[complete.cases(msc_dmr_mCG), ])
+```
+
+
 #### Keratinocytes
 ```{r, cache=TRUE}
 dmr_nhek <- readRDS("wgbs/dmrs/dmrseq_nhek_primed_vs_tnt/dmrseq_nhek_primed_vs_tnt_NHEK_Primed_vs_NHEK_TNT_dmrseq_dmrs.Rds")
@@ -250,6 +265,14 @@ pheatmap(nhek_dmr_mCG[complete.cases(nhek_dmr_mCG), ],
          show_rownames = FALSE, fontsize = 6,
          clustering_distance_cols = "correlation")
 dev.off()
+```
+```{r}
+
+openxlsx::addWorksheet(wb_ed_fig9f, sheetName = "ED_Fig_9f_nhek")
+openxlsx::writeData(wb = wb_ed_fig9f, sheet = "ED_Fig_9f_nhek",
+                    x = nhek_dmr_mCG[complete.cases(nhek_dmr_mCG), ])
+openxlsx::saveWorkbook(wb = wb_ed_fig9f,
+                       file = "ED_Figure_9f_source_data.xlsx", overwrite = TRUE)
 ```
 
 
