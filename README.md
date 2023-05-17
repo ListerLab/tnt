@@ -1,2 +1,2 @@
 # tnt
-Analysis code for Buckberry et al (2023) Nature
+Analysis code for Buckberry, Liu, Poppe, Tan et al. (2023) Nature
