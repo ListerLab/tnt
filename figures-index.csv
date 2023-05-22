@@ -1,0 +1,27 @@
+﻿Figure ,Panel,Code_file,Original_figure_file,Source_data
+Fig 1,a,NA,,NA
+,b,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
+,c,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
+,d,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
+,e,Figure_1.Rmd,wgbs/plots/regulatory_elements_cmeans_summary_plots.pdf,Figure_1_source_data.xlsx
+,f,Figure_1.Rmd,wgbs/plots/regulatory_elements_cmeans_motif_plots.pdf,Figure_1_source_data.xlsx
+,g,NA,NA,NA
+Fig 2,a,,,
+,b,,,
+,c,,,
+,d,,,
+,e,NA,NA,NA
+,f,,,
+ED Fig 1,a,NA,NA,NA
+,b,Figure_1.Rmd,RNAseq/plots/Fig1_pluripotency_genes.pdf,ED_Figure_1_source_data.xlsx
+,c,Figure_1.Rmd,wgbs/plots/oz_plot.pdf,ED_Figure_1_source_data.xlsx
+,d,Figure_1.Rmd,wgbs/plots/per_read_mCG_stats_barplots.pdf,ED_Figure_1_source_data.xlsx
+,e,Figure_1.Rmd,wgbs/plots/global_mCH_barplots.pdf,ED_Figure_1_source_data.xlsx
+,f,Figure_1.Rmd,RNAseq/plots/Fig1_methylation_genes.pdf,ED_Figure_1_source_data.xlsx
+,g,Figure_1.Rmd,RNAseq/plots/Fig1_cluster_example_genes.pdf,ED_Figure_1_source_data.xlsx
+,h,Figure_1.Rmd,wgbs/plots/oksm_regulatory_element_mC_change_barplots.pdf,ED_Figure_1_source_data.xlsx
+,i,NA,NA,NA
+,j,,,
+,k,,,
+,l,,,
+Fig 3,,,,

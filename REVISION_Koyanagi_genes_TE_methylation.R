@@ -1,0 +1,125 @@
+source("R/project_functions.R")
+
+gr_te <- readRDS("resources/hg19_rmsk_TE_granges.Rds")
+
+gtfPath <- "resources/genes.gtf.gz"
+txdb <- makeTxDbFromGFF(file = gtfPath,
+                        format = "gtf")
+
+gene_gr <- genes(txdb)
+
+gene_sub <- gene_gr[gene_gr$gene_id %in% c("HHLA1", "ABHD12B", "C4orf51")]
+
+te_sub <- gr_te[overlapsAny(gr_te, gene_sub)]
+
+te_sub <- te_sub[te_sub$gene == "LTR7"]
+
+mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
+mdat <- mdat[mdat$Group %in% c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC", "hESC"), ]
+mdat <- mdat[mdat$Media != "t2iLGoY", ]
+mdat <- mdat[mdat$Progenitor %in% c("ESC", "Fibroblast"), ]
+mdat <- mdat[mdat$Lab == "Lister", ]
+mdat <- mdat[mdat$Batch != "C", ]
+mdat <- mdat[!grepl("merge", mdat$Library_id), ]
+
+file.exists(mdat$BSseq_CG)
+
+te_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG, gr = te_sub, cores = 3)
+colnames(te_mCG) <- mdat$Library_id
+te_mCG <- data.frame(te_mCG)
+
+te_mCG$gene <- c("ABHD12B", "ABHD12B", "C4orf51", "C4orf51", "HHLA1", "HHLA1")
+
+te_mCG_melt <- reshape2::melt(te_mCG)
+
+ind <- match(te_mCG_melt$variable, mdat$Library_id)
+
+te_mCG_melt$group <- mdat$Group[ind]
+te_mCG_melt$lab <- mdat$Lab[ind]
+te_mCG_melt$background <- mdat$Background[ind]
+
+te_mCG_melt <- te_mCG_melt[te_mCG_melt$lab == "Lister" &
+                               (te_mCG_melt$group %in% c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC", "hESC")), ]
+
+te_mCG_melt$group <- factor(te_mCG_melt$group,
+                            levels=c("Primed-hiPSC", "TNT-hiPSC", "NtP-hiPSC", "hESC"))
+
+te_mCG_melt$gene <- factor(te_mCG_melt$gene, levels=c("HHLA1", "ABHD12B", "C4orf51"))
+
+pdf("wgbs/plots/Koyanagi_genes_te_mCG_boxplots.pdf", width = 3, height = 2)
+ggplot(te_mCG_melt, aes(x = group, y = value, group=group)) +
+    geom_boxplot() + ylab("LTR7 mCG/CG") +
+    facet_grid(.~gene, scales = "free", space = "free", drop = TRUE) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6,
+                                     colour = 'black'),
+          axis.text.y = element_text(size=6, colour='black', angle = 0),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks = element_line(color = 'black', size = line_mm))
+dev.off()
+
+wb_ed_fig9c <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig9c, sheetName = "ED_Fig_9c")
+openxlsx::writeData(wb = wb_ed_fig9c, sheet = "ED_Fig_9c",
+                    x = te_mCG_melt)
+openxlsx::saveWorkbook(wb = wb_ed_fig9c,
+                       file = "ED_Figure_9c_source_data.xlsx", overwrite = TRUE)
+
+
+ruiz_genes <- c("PTPRT", "TMEM132C", "TMEM132D", "TCERG1L",
+                "DPP6", "FAM19A5", "RBFOX1", "CSMD1", "C22orf34")
+
+
+ruiz_gene_gr <- gene_gr[gene_gr$gene_id %in% ruiz_genes]
+
+## Authors add 10kb to gene start and end
+ruiz_gene_gr_expand <- ruiz_gene_gr + 10000
+
+## Get mCG
+ruiz_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG,
+                           gr = ruiz_gene_gr_expand, cores = 4)
+colnames(ruiz_mCG) <- mdat$Library_id
+ruiz_mCG <- data.frame(ruiz_mCG)
+
+ruiz_mCG$gene <- as.character(ruiz_gene_gr$gene_id)
+
+ruiz_mCG_melt <- reshape2::melt(ruiz_mCG)
+
+ind2 <- match(ruiz_mCG_melt$variable, mdat$Library_id)
+
+ruiz_mCG_melt$group <- mdat$Group[ind2]
+ruiz_mCG_melt$lab <- mdat$Lab[ind2]
+ruiz_mCG_melt$background <- mdat$Background[ind2]
+
+ruiz_mCG_melt <- ruiz_mCG_melt[ruiz_mCG_melt$lab == "Lister" &
+                               (ruiz_mCG_melt$group %in% c("Primed-hiPSC",
+                                                           "TNT-hiPSC", "NtP-hiPSC", "hESC")), ]
+
+ruiz_mCG_melt$group <- factor(ruiz_mCG_melt$group,
+                            levels=c("Primed-hiPSC", "TNT-hiPSC",
+                                     "NtP-hiPSC", "hESC"))
+
+pdf("wgbs/plots/ruiz_gene_methylation_boxplots.pdf", width = 7, height = 2.5)
+ggplot(ruiz_mCG_melt, aes(x = group, y = value, group=group, )) +
+    geom_boxplot() + ylab("LTR7 mCG/CG") +
+    facet_grid(.~gene, scales = "free", space = "free", drop = TRUE) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6,
+                                     colour = 'black'),
+          axis.text.y = element_text(size=6, colour='black', angle = 0),
+          strip.text.y = element_text(size = 6),
+          text = element_text(size=6),
+          strip.background = element_blank(),
+          axis.line.x = element_line(color = 'black', size = line_mm),
+          axis.line.y = element_line(color = 'black', size = line_mm),
+          axis.ticks = element_line(color = 'black', size = line_mm))
+dev.off()
+
+wb_ed_fig9e <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig9e, sheetName = "ED_Fig_9e")
+openxlsx::writeData(wb = wb_ed_fig9e, sheet = "ED_Fig_9e",
+                    x = ruiz_mCG_melt)
+openxlsx::saveWorkbook(wb = wb_ed_fig9e,
+                       file = "ED_Figure_9e_source_data.xlsx", overwrite = TRUE)
