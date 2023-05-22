@@ -1,17 +1,17 @@
 ﻿Figure ,Panel,Code_file,Original_figure_file,Source_data
-Fig 1,a,NA,,NA
+Fig 1,a,NA,NA,NA
 ,b,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
 ,c,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
 ,d,Figure_1.Rmd,wgbs/plots/Fig_1bcd_global_mC_plots.pdf,Figure_1_source_data.xlsx
 ,e,Figure_1.Rmd,wgbs/plots/regulatory_elements_cmeans_summary_plots.pdf,Figure_1_source_data.xlsx
 ,f,Figure_1.Rmd,wgbs/plots/regulatory_elements_cmeans_motif_plots.pdf,Figure_1_source_data.xlsx
 ,g,NA,NA,NA
-Fig 2,a,,,
-,b,,,
-,c,,,
-,d,,,
+Fig 2,a,Figure_2.Rmd,wgbs/plots/primed_vs_esc_dmr_class_count_barplot.pdf,Figure_2_source_data.xlsx
+,b,Figure_2.Rmd,wgbs/plots/dmr_delta_scatter.pdf,Figure_2_source_data.xlsx
+,c,Figure_2.Rmd,wgbs/plots/dmr_abs_difference_d0_line_plots_top2.pdf,Figure_2_source_data.xlsx
+,d,Figure_2.Rmd,wgbs/plots/dmr_abs_difference_d0_line_plots_top2.pdf,Figure_2_source_data.xlsx
 ,e,NA,NA,NA
-,f,,,
+,f,Figure_2.Rmd,wgbs/plots/icr_timecourse_boxplots_maternal_germline.pdf,Figure_2_source_data.xlsx
 ED Fig 1,a,NA,NA,NA
 ,b,Figure_1.Rmd,RNAseq/plots/Fig1_pluripotency_genes.pdf,ED_Figure_1_source_data.xlsx
 ,c,Figure_1.Rmd,wgbs/plots/oz_plot.pdf,ED_Figure_1_source_data.xlsx
@@ -21,7 +21,7 @@ ED Fig 1,a,NA,NA,NA
 ,g,Figure_1.Rmd,RNAseq/plots/Fig1_cluster_example_genes.pdf,ED_Figure_1_source_data.xlsx
 ,h,Figure_1.Rmd,wgbs/plots/oksm_regulatory_element_mC_change_barplots.pdf,ED_Figure_1_source_data.xlsx
 ,i,NA,NA,NA
-,j,,,
-,k,,,
-,l,,,
+,j,Figure_2.Rmd,wgbs/plots/cg-dmr-timecourse-heatmap.png,ED_Figure_1_jkl_source_data.xlsx
+,k,Figure_2.Rmd,wgbs/plots/dmr_abs_difference_d0_line_plots.pdf,ED_Figure_1_jkl_source_data.xlsx
+,l,Figure_2.Rmd,wgbs/plots/icr_timecourse_boxplots_NOT_maternal_germline.pdf,ED_Figure_1_jkl_source_data.xlsx
 Fig 3,,,,

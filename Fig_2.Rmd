@@ -503,9 +503,9 @@ openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2cd")
 openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2cd",
                     x = gg_z2$data)
 
-wb_ed_fig2 <- openxlsx::createWorkbook()
-openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2c")
-openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2c",
+wb_ed_fig1_jkl <- openxlsx::createWorkbook()
+openxlsx::addWorksheet(wb_ed_fig1_jkl, sheetName = "ED_Fig_1k")
+openxlsx::writeData(wb = wb_ed_fig1_jkl, sheet = "ED_Fig_1k",
                     x = gg_z$data)
 ```
 
@@ -560,8 +560,8 @@ dev.off()
 ```
 
 ```{r, cache=TRUE}
-openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2b")
-openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2b",
+openxlsx::addWorksheet(wb_ed_fig1_jkl, sheetName = "ED_Fig_2b")
+openxlsx::writeData(wb = wb_ed_fig1_jkl, sheet = "ED_Fig_2b",
                     x = hm_df)
 ```
 
@@ -657,8 +657,8 @@ gg_icr_time_box
 ```
 Write source data sheets
 ```{r, cache=TRUE}
-openxlsx::addWorksheet(wb_ed_fig2, sheetName = "ED_Fig_2d")
-openxlsx::writeData(wb = wb_ed_fig2, sheet = "ED_Fig_2d",
+openxlsx::addWorksheet(wb_ed_fig1_jkl, sheetName = "ED_Fig_2d")
+openxlsx::writeData(wb = wb_ed_fig1_jkl, sheet = "ED_Fig_2d",
                     x = gg_icr_time_box$data)
 
 openxlsx::addWorksheet(wb_fig2, sheetName = "Fig_2f")
@@ -671,8 +671,8 @@ openxlsx::saveWorkbook(wb = wb_fig2,
                        file = "Figure_2_source_data.xlsx",
                        overwrite = TRUE)
 
-openxlsx::saveWorkbook(wb = wb_ed_fig2,
-                       file = "ED_Figure_2_source_data.xlsx",
+openxlsx::saveWorkbook(wb = wb_ed_fig1_jkl,
+                       file = "ED_Figure_1_jkl_source_data.xlsx",
                        overwrite = TRUE)
 ```
 
