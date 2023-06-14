@@ -1,0 +1,315 @@
+---
+title: "ATAC-seq data processing"
+author: "Sam Buckberry"
+date: "19/04/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
+```
+
+Read in the sample sheet and annotate
+```{r, eval=FALSE}
+
+mdat <- read.csv("atac/atac_sample_sheet.csv")
+
+id_split <- str_sub(mdat$read1, start = 24) %>% str_remove(pattern = "_bulkATAC_S[1-9]_L00[1-2]_R1_001.fastq.gz") %>%
+    str_remove(pattern = "_bulkATAC_S1[0-9]_L00[1-2]_R1_001.fastq.gz") %>% 
+    str_remove(pattern = "_bulkATAC_S2[0-9]_L00[1-2]_R1_001.fastq.gz")
+
+mdat$id <- id_split
+
+mdat$lane <- ifelse(test = grepl(pattern = "_L001_", x = mdat$read1),
+                    yes = "L001", no = "L002")
+
+```
+
+### Map ATACseq data
+
+Make mapping manifest
+```{r, eval=FALSE}
+map_manifest <- data.frame(r1=mdat$read1, r2=mdat$read2, cores=60)
+
+write.table(x = map_manifest, file = "atac/map_manifest.tsv", sep = "\t",
+            quote = FALSE, row.names = FALSE, col.names = FALSE)
+```
+
+Map
+```{r, eval=FALSE}
+while read i j; do sh atac/map_atac_pe.sh $i $j; done < atac/map_manifest.tsv
+```
+
+```{r, eval=FALSE}
+while read i j; do sh map_atac_pe.sh $i $j; done < /home/sbuckberry/working_data_04/hs-reprogram/atac/map_manifest.tsv
+```
+
+### Postmap process ATACseq data
+
+postmap_atac.sh
+```{bash, eval = FALSE}
+#!/bin/bash
+lib=$1
+L1=$2
+L2=$3
+cores=16
+
+set -eu -o pipefail -o verbose
+
+date
+
+echo ===Running_postmap===
+echo $lib
+
+# Merge lanes
+echo ===Merging_BAM_files===
+samtools merge --threads "$cores" "$lib"_all_merge.bam "$L1" "$L2" 
+
+# Fix mates
+echo ===Fixing_mates===
+samtools fixmate --threads "$cores" -m -r -O bam "$lib"_all_merge.bam "$lib"_fixed_tmp.bam
+
+# samtools sort
+echo ===sorting===
+samtools sort -O BAM -T "$lib" --threads "$cores" -o "$lib"_tmp_sorted.bam "$lib"_fixed_tmp.bam
+
+# Filter for proper pairs
+
+
+# Deduplicate BAM
+echo ===deduplicating===
+samtools markdup -T "$lib" -r --threads "$cores" "$lib"_tmp_sorted.bam "$lib"_tmp_dedup.bam
+
+samtools index -@ "$cores" "$lib"_tmp_dedup.bam
+
+# Remove mitochondrial reads
+echo ===cleaning_chrM===
+samtools idxstats --threads "$cores" "$lib"_tmp_dedup.bam | cut -f 1 | grep -v chrM | xargs samtools view --threads "$cores" -b "$lib"_tmp_dedup.bam > "$lib"_merge_no_chrM.bam
+
+# index bam
+samtools index -@ "$cores" "$lib"_merge_no_chrM.bam
+
+# Make browser tracks
+echo ===make_bigiwg===
+bamCoverage -p "$cores" --binSize 1 \
+-b "$lib"_merge_no_chrM.bam \
+-o "$lib"_coverage.bigwig
+
+echo ===cleaning===
+rm "$lib"*tmp*
+
+date
+```
+
+```{bash, eval=FALSE}
+ls *L001_R1*.bam | cut -c-6 > library_ids
+ls *_L001*.bam > L1_fls
+ls *_L002*.bam > L2_fls
+paste library_ids L1_fls L2_fls > bam_pairs
+
+while read i j k; 
+do sh postmap_atac.sh $i $j $k >> "$i"_postmap.log 2>&1;
+done < bam_pairs
+```
+
+Filter for proper pairs
+```{r, eval=FALSE}
+parallel -j1 samtools view --threads 16 -b -f 0x0002 -o {.}_proper.bam {} ::: *_merge_no_chrM.bam
+```
+
+
+### Peak calling
+
+Merge all BAM files for peak calling
+```{bash, eval = FALSE}
+samtools merge --threads 16 atac_all_libs_merged.bam RL*_merge_no_chrM.bam
+```
+
+
+Create insertion-centered BED intervals for peak calling
+```{r, eval=FALSE}
+library(GenomicRanges)
+library(GenomicAlignments)
+library(magrittr)
+library(stringr)
+library(data.table)
+library(Rsamtools)
+
+# Set outoput to no scientific notation
+options(scipen=999)
+
+bam_to_insertions_bed <- function(bam_file, width=50){
+    
+    #Set output file
+    bed_file <-  str_replace(string = bam_file, pattern = ".bam",
+                               replacement = "_insertions.bed")
+
+    # Read bed file function
+    read_bed <- function(bed_file){
+        
+            dat <- read.table(bed_file, sep = "\t",
+                                     header = FALSE)
+            
+            gr <- GenomicRanges::GRanges(seqnames = dat$V1,
+                          ranges = IRanges(start = dat$V2,
+                                           end = dat$V3))
+            return(gr)
+    }
+    
+    # Read blacklist
+    bl <- read_bed("/home/sbuckberry/working_data_04/hs-reprogram/resources/hg19_blacklist_regions_ENCFF001TDO.bed")
+    
+    # Read bam file function
+    read_atac_pos <- function(bam_file){
+            
+            tn <- GenomicAlignments::readGAlignments(file = bam_file) %>%
+                GRanges()
+            
+            # Offset the reads to correspond to tn5 insertion site
+            pos <- tn[strand(tn) == "+"] %>% 
+                    GenomicRanges::shift(shift=4) %>%
+                    GenomicRanges::resize(width = width, fix = "start")
+            #strand(pos) <- "*"
+            
+            neg <- tn[strand(tn) == "-"] %>%
+                    GenomicRanges::shift(shift = -5) %>%
+                    GenomicRanges::resize(width = 50, fix = "start")
+            #strand(neg) <- "*"
+    
+            return(c(pos, neg))
+    }
+    
+    # Write bed file function
+    write_gr_bed <- function(gr, file, score="0", name="."){
+            dat <- as.data.frame(gr)[ ,c(1:3,5)]
+            dat$score <- score
+            dat$name <- name
+            dat <- dat[ ,c(1,2,3,6,5,4)]
+            write.table(dat, file = file, quote = FALSE,
+                        sep = "\t", row.names = FALSE, col.names = FALSE)
+    }
+    
+    
+    # Load the position data
+    gr <- read_atac_pos(bam_file = bam_file)
+    
+    # Remove peaks overlapping blacklist
+
+    gr <- gr[!overlapsAny(query = gr, subject = bl)]
+    
+    # write the output file
+    write_gr_bed(gr, bed_file)
+}
+
+bam_to_insertions_bed(bam_file = "atac/atac_all_libs_merged.bam")
+bam_to_insertions_bed(bam_file = "atac/atac_all_psc_libs_merged.bam")
+bam_to_insertions_bed(bam_file = "atac/atac_all_nsc_libs_merged.bam")
+```
+
+Compress bed files
+```{r, eval=FALSE}
+pigz *libs_merged_insertions.bed
+```
+
+Call peaks
+```{bash, eval = FALSE}
+macs2 callpeak -f BED --nomodel -t atac_all_libs_merged_insertions.bed.gz \
+-n atac_all_libs_merged --keep-dup all --gsize hs
+
+macs2 callpeak -f BED --nomodel -t atac_all_nsc_libs_merged_insertions.bed.gz \
+-n nsc --keep-dup all --gsize hs
+
+macs2 callpeak -f BED --nomodel -t atac_all_psc_libs_merged_insertions.bed.gz \
+-n psc --keep-dup all --gsize hs
+```
+
+Make peak counts table
+```{r, eval=FALSE}
+library(IRanges)
+library(GenomicRanges)
+library(GenomicAlignments)
+library(Rsamtools)
+library(data.table)
+library(parallel)
+library(BiocParallel)
+library(magrittr)
+
+# Set multiple cores
+#register(MulticoreParam(workers=16))
+BiocParallel::register(BiocParallel::SerialParam())
+# Load the peaks file containg summary of all peaks
+peak_file <- "atac_all_libs_merged_peaks.narrowPeak"
+
+peak_files <- list.files(path = ".", pattern = ".narrowPeak")
+
+# Load the bam files
+bamFls <- list.files(path = "aligned_data/",
+                     pattern = "_proper.bam$",
+                     full.names = TRUE) %>% BamFileList()
+
+get_peak_counts <- function(bamFls=bamFls, peak_file, out_file){
+    
+    # Convert the peaks files to GRanges and reduce to common set of peaks
+    read_peaks <- function(peakFile){
+            dat <- fread(peakFile)
+            gr <- GRanges(seqnames = Rle(dat$V1),
+                          ranges = IRanges(start = dat$V2,
+                                           end = dat$V3))
+            return(gr)
+    }
+    
+    peaks <- read_peaks(peak_file)
+    
+    # Get read counts for peaks.
+    # singleEnd=TRUE will count both reads in a pair.
+    # This is what you want for counting insertion events.
+    olaps <- summarizeOverlaps(features = peaks[1:1000],
+                             reads = bamFls[1], singleEnd=TRUE)
+    
+    cts <- assays(olaps)$counts
+    
+    # Create locus id for output
+    loci <- paste(seqnames(peaks), start(peaks), sep = ":")
+    loci <- paste(loci, end(peaks), sep = "-")
+    rownames(cts) <- loci
+    
+    write.table(x = cts,
+    	file = out_file,
+    	quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+    
+}
+
+outs <- str_c(peak_files, ".counts.txt")
+
+get_peak_counts(bamFls = bamFls, peak_file = peak_files[1], out_file = outs[1])
+get_peak_counts(bamFls = bamFls, peak_file = peak_files[2], out_file = outs[2])
+get_peak_counts(bamFls = bamFls, peak_file = peak_files[3], out_file = outs[3])
+```
+
+### Make merged files
+
+```{r, eval=FALSE}
+library(stringr)
+sdat <- read.csv("../atac_metadata.csv")
+sdat$bam <- str_replace(sdat$bam, pattern = ".bam", replacement = "_proper.bam")
+sdat$cell_group <- str_c(sdat$cell_type, sdat$group, sep = "_")
+
+groups <- unique(sdat$cell_group)
+
+make_merge_manifest <- function(cell_group){
+    df <- sdat[sdat$cell_group == cell_group, ]
+    bams <- paste(df$bam, collapse = " ")
+    cmd <- str_c("samtools merge --threads 16 ", cell_group, "_all_merge.bam ", bams)
+    system(cmd)
+}
+
+lapply(groups, make_merge_manifest)
+
+```
+
+Make tracks of merged BAM files
+```{bash, eval = FALSE}
+parallel bamCoverage -p 10 --binSize 1 \
+-b {} -o {.}_atac_cpm.bigwig ::: *_all_merge.bam
+```
