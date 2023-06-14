@@ -1054,6 +1054,10 @@ png("manuscript_figure_plots/MEL1_atac_ma_plots.png", width = 4.5, height = 1.3,
 gg_ma_atac
 dev.off()
 
+pdf("manuscript_figure_plots/MEL1_atac_ma_plots.pdf", width = 4.5, height = 1.3)
+gg_ma_atac
+dev.off()
+
 gg_ma_atac
 ```
 
@@ -1360,8 +1364,14 @@ png("manuscript_figure_plots/MEL1_te_ma_plots.png", width = 4.5, height = 1.3, u
 gg_ma_te
 dev.off()
 
+pdf("manuscript_figure_plots/MEL1_te_ma_plots.pdf", width = 4.5, height = 1.3)
+gg_ma_te
+dev.off()
+
 gg_ma_te
 ```
+
+
 
 ```{r}
 openxlsx::addWorksheet(wb_fig4, sheetName = "Fig_4c_te")
