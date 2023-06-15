@@ -1,0 +1,475 @@
+---
+title: "Differential atac"
+author: "Sam Buckberry"
+date: "26/04/2021"
+output: html_document
+---
+
+Preliminaries
+```{r, message=FALSE}
+source("R/project_functions.R")
+library(readxl)
+```
+
+Read the counts data
+```{r}
+dat <- read.table("atac/psc_peaks.narrowPeak.counts.txt.gz")
+colnames(dat) <- str_sub(colnames(dat), start = 1, end = 6)
+
+# remove the chrY data
+dim(dat)
+dat <- dat[!grepl("chrY", rownames(dat)), ]
+dim(dat)
+```
+
+read the metadata
+```{r}
+mdat <- read.csv("atac/atac_metadata.csv")
+```
+
+
+Match the metadata with the counts data
+```{r}
+dat <- dat[ ,colnames(dat) %in% mdat$library]
+ind <- match(colnames(dat), mdat$library)
+mdat <- mdat[ind, ]
+all(colnames(dat) == mdat$library) %>% stopifnot()
+```
+
+### Global plots
+
+Make normalised counts matrix
+```{r}
+y_all <- DGEList(counts = dat, samples = mdat)
+
+
+peak_gr <- GRanges(rownames(dat))
+pro_gr <- promoters(TxDb.Hsapiens.UCSC.hg19.knownGene)
+peak_gr$promoter <- overlapsAny(peak_gr, pro_gr)
+
+rpkm_dat <- rpkm(y_all, gene.length = width(peak_gr))
+```
+
+
+Split into cell groups
+```{r}
+y_psc <- y_all[ ,y_all$samples$cell_type == "PSC"]
+#y_nsc <- y_all[ ,y_all$samples$cell_type == "NSC"]
+```
+
+Plot MDS
+```{r}
+
+plot_gg_mds <- function(y, top_var_peaks=0.01){
+    
+    y <- y[filterByExpr(y, group = y$samples$group), ]
+    
+    top_n <- round(nrow(y)*top_var_peaks)
+    
+    mds <- plotMDS(y, labels = y$samples$id, top = top_n, plot = FALSE)
+    
+    plot_df <- data.frame(mds$cmdscale.out)
+    plot_df$label <- y$samples$id
+    plot_df$group <- y$samples$group
+    
+    lims <- c(plot_df$X1, plot_df$X2) %>% abs %>% max() %>% ceiling()
+    
+    gg_mds <- ggplot(data = plot_df,
+                      mapping = aes(x = -X2, y = -X1, label=label,
+                                    fill=group, colour=group)) +
+                geom_point(alpha=0.8, size=4) +
+                xlim(-lims, lims) + ylim(-lims, lims) +
+                theme_linedraw() + 
+                theme(panel.grid = element_line(colour = 'grey')) +
+                scale_color_manual(values = reprog_pal) +
+                geom_text_repel() +
+                xlab("Leading log fold-change (dim 2)") +
+                ylab("Leading log fold-change (dim 1)")
+    gg_mds
+}
+
+
+gg_mds_psc <- plot_gg_mds(y_psc, top_var_peaks = 0.01)
+#gg_mds_nsc <- plot_gg_mds(y_nsc, top_var_peaks = 0.01)
+#gg_mds_all <- plot_gg_mds(y_all, top_var_peaks = 0.01)
+```
+
+### Differential peak tesing
+
+```{r}
+
+y <- y_psc
+
+calc_de <- function(y){
+    
+    # Setup design for filtering
+    group <- as.character(y$samples$group)
+    design <- model.matrix(~ group)
+    
+    # Filter low tag count peaks
+    keep <- filterByExpr(y, design = design)
+    table(keep)
+    y <- y[keep, , keep.lib.sizes=FALSE]
+    
+    # Calculate normalisation factors
+    y <- calcNormFactors(y)
+    
+    # Estimate dispersion
+    y <- estimateDisp(y)
+    
+    # GLM model and test   
+    fit <- glmQLFit(y, design, robust = TRUE)
+    
+    return(fit)
+}
+```
+
+```{r}
+y <- y_psc
+
+#calc_de <- function(y){
+    
+    # Setup design for filtering
+    group <- as.character(y$samples$group)
+    design <- model.matrix(~ group)
+    
+    # Filter low tag count peaks
+    keep <- filterByExpr(y, design = design)
+    table(keep)
+    y <- y[keep, , keep.lib.sizes=FALSE]
+    
+    # Calculate normalisation factors
+    y <- calcNormFactors(y)
+    
+    # Estimate dispersion
+    y <- estimateDisp(y)
+    
+    # GLM model and test   
+    fit <- glmQLFit(y, design, robust = TRUE)
+    
+#    return(fit)
+#}
+
+fit_psc <- fit
+```
+
+
+Sample-specific comparisons
+```{r}
+calc_contrast_de <- function(x){
+    
+    qlf_psc <- glmQLFTest(fit_psc, coef=x)
+    
+    cont <- colnames(fit_psc$coefficients)[x]
+    
+    tt <- topTags(qlf_psc, n = nrow(y))
+    tt <- tt$table
+    tt$contrast <- cont
+    
+    tt$significant <- (tt$FDR < 0.05) & (tt$logCPM > 1) & (abs(tt$logFC) > 2)
+    tt$direction <- ifelse(tt$logFC < 0, yes = "Down", no = "Up")
+    tt$loci <- rownames(tt)
+    
+    return(tt)
+}
+
+tt_list <- lapply(2:4, calc_contrast_de) %>% do.call(rbind, .)
+
+tt_sig <- tt_list
+
+write.table(tt_list, "atac/MEL1_differential_atac_peak_table.txt", sep = "\t",
+            row.names = TRUE, col.names = TRUE)
+```
+
+Plot peaks that are DE in any treatment comparison
+```{r}
+
+# Test for all iPSC groups vs ESC. 
+# This will find peaks different between any of the iPSC groups. 
+
+fit_psc <- calc_de(y_psc)
+qlf_psc <- glmQLFTest(fit_psc, coef=2:4)
+
+#qlf_psc <- glmQLFTest(fit_psc, coef=2)
+
+tt <- topTags(qlf_psc, n = nrow(y))
+tt <- tt$table
+
+#tt_sig <- tt[tt$FDR < 0.05 & tt$logCPM > 1 & abs(tt$logFC) > 2, ]
+
+tt_sig <- tt[tt$FDR < 0.05 & tt$logCPM > 1, ]
+
+lfc_pass <- rowSums(abs(tt_sig[ ,1:3]) > 2)>=1 
+tt_sig <- tt_sig[lfc_pass, ]
+dim(tt_sig)
+
+tt_ranges <- GRanges(rownames(tt_sig)) %>% as.data.frame()
+tt_out <- data.frame(tt_ranges$seqnames, tt_ranges$start, tt_ranges$end, 
+                     1:nrow(tt_sig), -log10(tt_sig$FDR), "+")
+
+write.table(tt_out, file = "atac/all_differential_peaks.bed",
+            sep = "\t", quote = FALSE, row.names = FALSE,
+            col.names = FALSE)
+
+write.table(tt_out[tt_sig$logFC.groupPrimed < -2, ], file = "atac/all_differential_peaks_primed_down.bed",
+            sep = "\t", quote = FALSE, row.names = FALSE,
+            col.names = FALSE)
+
+write.table(tt_out[tt_sig$logFC.groupPrimed > 2, ],
+            file = "atac/all_differential_peaks_primed_up.bed",
+            sep = "\t", quote = FALSE, row.names = FALSE,
+            col.names = FALSE)
+
+
+
+
+tt_out <- data.frame(tt_ranges$seqnames, tt_ranges$start, tt_ranges$end, 
+                     1:nrow(tt_sig), -log10(tt_sig$FDR), "+")
+
+rpkm_sig <- rpkm_dat[rownames(rpkm_dat) %in% rownames(tt_sig), ]
+
+psc_atac_gr <- GRanges(rownames(tt))
+mcols(psc_atac_gr) <- tt
+
+colnames(tt) <- str_replace(string = colnames(tt),
+                            pattern = "logFC.group", replacement = "")
+
+tt_long <- reshape2::melt(tt, id.vars=c("logCPM","F","PValue","FDR"))
+
+tt_long$significant <- (abs(tt_long$value) > 1) & (tt_long$FDR < 0.01) & (tt_long$logCPM > 0)
+tt_long$significant <- ifelse(test = tt_long$significant, yes = "Significant", no = "NS")
+
+tt_long <- tt_long[order(tt_long$significant, -log10(tt_long$PValue)), ]
+tt_long$variable <- factor(tt_long$variable, levels=c("Primed", "TNT", "NtP"))
+
+head(tt_long)
+
+table(tt_long$significant)
+write.table(tt_long, file = "atac/atac_differential_test_results.txt",
+            quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
+
+
+```
+
+
+Deeptools heatmap of DE peaks
+```{bash, eval=FALSE}
+computeMatrix reference-point \
+-a 5000 -b 5000 -p 24 --binSize 100 \
+-S /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_ESC_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_Primed_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_TNT_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_NtP_all_merge_atac_cpm.bigwig \
+-R /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks.bed \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_DE_peaks.tab.gz
+
+computeMatrix scale-regions \
+-m 1000 -a 2500 -b 2500 -p 24 --binSize 10 \
+--sortUsingSamples 1 3 \
+--missingDataAsZero \
+-S /home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_ESC_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_Primed_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_TNT_all_merge_atac_cpm.bigwig \
+/home/sbuckberry/working_data_04/hs-reprogram/atac/aligned_data/PSC_NtP_all_merge_atac_cpm.bigwig \
+-R /home/sbuckberry/working_data_04/hs-reprogram/atac/all_differential_peaks.bed \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_DE_peaks.tab.gz
+
+
+plotHeatmap --kmeans 3 --colorMap Reds \
+--heatmapHeight 5 \
+--heatmapWidth 1 \
+--boxAroundHeatmaps no \
+--matrixFile /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_DE_peaks.tab.gz \
+--outFileName /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_DE_peaks_heatmap.pdf \
+--outFileSortedRegions /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_DE_peaks_sorted.bed \
+--samplesLabel "ESC" "Primed" "TNT" "NtP"
+
+git add *.pdf && git commit -m 'dt updates' && git pull && git push 
+
+```
+
+
+
+
+
+MA plots
+```{r}
+gg_ma <- ggplot(data = tt_long, aes(x = logCPM, y = -value, colour=significant)) +
+    geom_point() +
+    facet_grid(~variable, drop = TRUE, scales = "free_y", space = "free") +
+    scale_colour_manual(values = c("grey", "firebrick")) +
+        geom_point(alpha=0.5, size=0.4) +
+        xlab("log CPM") + ylab("log fold change") +
+        geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
+        theme(strip.text.y = element_text(angle = 0)) +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+gg_volc <- ggplot(data = tt, aes(x = -value, y = -log10(PValue), colour=significant)) +
+    geom_point() +
+    facet_grid(~variable, drop = TRUE, scales = "free_y", space = "free") +
+        scale_colour_manual(values = c("grey", "firebrick")) +
+        geom_point(alpha=0.5, size=0.4) +
+        geom_vline(xintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
+        ylab("-log10 P-value") + xlab("log fold change") +
+        theme(strip.text.y = element_text(angle = 0)) +
+        sams_pub_theme(x.text.angle = 0, legend_pos = "right")
+
+pdf(file = "atac/plots/atac_de_peaks_MA_and_volcano_plots.pdf", width = 5, height = 3)
+plot_grid(gg_ma, gg_volc, align = 'hv', nrow = 2, axis = 'l')
+dev.off()
+
+png(filename = "atac/plots/atac_de_peaks_MA_and_volcano_plots.png", width = 10, height = 6, units = "in", res = 300)
+plot_grid(gg_ma, gg_volc, align = 'hv', nrow = 2, axis = 'l')
+dev.off()
+
+
+```
+
+```{r}
+annot_dat <- mdat[ ,4:5]
+rownames(annot_dat) <- mdat$library
+
+plot_dat <- log2(rpkm_sig+1)
+pheatmap(plot_dat, show_rownames = FALSE, scale = 'row',
+         annotation_col = annot_dat, labels_col = mdat$id,
+         clustering_distance_cols = 'correlation')
+```
+
+
+Lets look at peaks with a differential TE
+```{r}
+te_de_df <- read.table("~/Documents/GitHub/human_reprogramming_paper/RNAseq/processed_data/MEL1_TE_differential_expression_results.txt")
+head(te_de_df)
+
+sig_te <- te_de_df[(te_de_df$contrast == "ESC_vs_Primed") &
+                       (te_de_df$significant == "Significant") & 
+                       te_de_df$Direction == "Down", ]
+
+sig_te_gr <- GRanges(seqnames = sig_te$seqnames,
+                     ranges = IRanges(start = sig_te$start,
+                                      end = sig_te$end))
+mcols(sig_te_gr) <- sig_te
+
+```
+
+Intersect ATAC peaks with TE's
+```{r}
+hits <- findOverlaps(sig_te_gr, peak_gr)
+
+sig_te_atac_gr <- sig_te_gr[hits@from]
+sig_te_atac_gr$strand
+
+```
+
+### Make profile plots of TE ATAC peaks
+
+Write bed file for ATAC regions to plot 
+```{r}
+te_peak_gr <- peak_gr[hits@to]
+strand(te_peak_gr) <- sig_te_gr$strand[hits@from]
+
+table(te_peak_gr$promoter)
+
+te_peak_df <- as.data.frame(te_peak_gr)
+te_peak_df <- data.frame(te_peak_df$seqnames, te_peak_df$start, te_peak_df$end, te_peak_df$promoter, 0, "+")
+write.table(te_peak_df, file = "RNAseq/processed_data/te_de_atac_peaks.bed",
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+```
+
+WGBS deeptools
+```{bash}
+computeMatrix reference-point \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/methylCseq/MEL1_WGBS/*_mCG_levels.bigwig \
+-R /home/sbuckberry/working_data_04/hs-reprogram/RNAseq/processed_data/te_de_atac_peaks.bed \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/mCG_TE_atac_peaks.tab.gz \
+-a 20000 -b 20000 -p 24 --binSize 1000
+
+plotProfile -m /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/mCG_TE_atac_peaks.tab.gz \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/mCG_TE_atac_peaks_profile.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5 --yMin 0 --yMax 1 \
+--samplesLabel "Naive-hiPSC" "hESC" "Primed-hiPSC" "TNT-hiPSC" "NtP-hiPSC_P4" "NtP-hiPSC_P9" "Mesoderm"
+```
+
+RNAseq deeptools
+```{bash}
+computeMatrix reference-point --missingDataAsZero -a 20000 -b 20000 -p 24 --binSize 1000 \
+-R /home/sbuckberry/working_data_04/hs-reprogram/RNAseq/processed_data/te_de_atac_peaks.bed \
+-S /home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1966-2019-12-24-P13-plus-20-MEL1-inE8-mRNAseq_S13_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1967-2019-12-24-P13-Plus-14-MEL1-Primed-E8-mRNAseq_S14_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1975-2019-12-24-P8-MEL1-HDFa-mRNAseq_S22_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1976-2019-12-24-P20-plus-3-MEL1-hESCs-to-fibroblasts-mRNAseq_S23_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1971-2019-12-24-P17-MEL1-HDF-to-E8-mRNAseq_S18_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1972-2019-12-24-P18-MEL1-HDF-to-E8-mRNAseq_S19_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1970-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S17_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1979-2019-12-24-P15-MEL1-HDF-to-SR-mRNAseq_S26_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1973-2019-12-24-P17-MEL1-D13-TNT-mRNAseq_S20_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1974-2019-12-24-P16-MEL1-D13-TNT-mRNAseq_S21_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1977-2019-12-24-P4-plus-19-MEL1-HDFa-N2P-mRNAseq_S24_merged_lanes_dta_uniq_cpm.bigwig \
+/home/sbuckberry/working_data_02/polo_project/human_ips/RNAseq/polyA/aligned_data/RL1978-2019-12-24-P9-plus-13-MEL1-HDFa-N2P-mRNAseq_S25_merged_lanes_dta_uniq_cpm.bigwig \
+--samplesLabel ESC_P20 ESC_P14 Mesoderm_P8 Mesoderm_P20 Primed_P17 Primed_P18 Naive_P15_1 Naive_P15_2 TNT_P17 TNT_P16 NtoP_P4 NtoP_P9 \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/RNA_TE_atac_peaks.tab.gz
+
+plotProfile -m /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/RNA_TE_atac_peaks.tab.gz \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/RNA_TE_atac_peaks_profile.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5
+```
+
+ATACseq deeptools
+```{bash}
+computeMatrix reference-point \
+-S /home/sbuckberry/working_data_04/hs-reprogram/atac/atac_bigwigs/*.bigwig \
+-R /home/sbuckberry/working_data_04/hs-reprogram/RNAseq/processed_data/te_de_atac_peaks.bed \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_TE_atac_peaks.tab.gz \
+-a 20000 -b 20000 -p 24 --binSize 1000
+
+plotProfile -m /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_TE_atac_peaks.tab.gz \
+-o /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/ATAC_TE_atac_peaks_profile.pdf \
+--numPlotsPerRow 7 --plotWidth 4 --plotHeight 5 \
+--samplesLabel "ESC_p13_33" "iPSC_TNT_p42" "iPSC_primed_p40" "iPSC_N2P_p13_73" "NSC_ES_p13_22_5" \
+"NSC_primed_p21_5" "ESC_p13_34" "iPSC_N2P_p9_21" "NSC_primed_p20_7" "NSC_TNT_p46_3" \
+"NSC_N2P_p17_37_19" "NSC_N2P_p17_67_9" "ESC_p13_35" "iPSC_TNT_p44" "iPSC_N2P_p9_22" \
+"NSC_ES_p13_20_7" "NSC_ES_p13_24_5" "NSC_TNT_p36_4" "iPSC_primed_p42" "NSC_Primed_p20_10" \
+"NSC_TNT_p46_4" "iPSC_TNT_p43" "iPSC_primed_p44"
+```
+
+deeptools git commit
+```{bash}
+git add /home/sbuckberry/working_data_04/hs-reprogram/deeptools_out/*.pdf && git commit -m 'update plots' && git pull && git push
+```
+
+
+### Footprinting
+
+Import footprint data 
+```{r}
+fp_summary_fls <- list.files("atac/aligned_data/", pattern = "results.txt", recursive = TRUE, full.names = TRUE)
+
+read_atac_fp <- function(fp_file){
+    
+    dat <- read.table(fp_file, header = TRUE)
+    dat$id <- dirname(fp_file) %>% str_split(pattern = "/") %>%
+        unlist() %>% tail(n=1)
+    colnames(dat)
+    colnames(dat)[8:11] <- c("iPSC_mean_score", "iPSC_bound", "Change", "Pvalue")
+    
+    return(dat)
+}
+
+fp_dat <- lapply(fp_summary_fls, read_atac_fp) %>% do.call(rbind, .)
+```
+
+
+Volcano plots of differential footprints
+```{r}
+
+gg_fp_volcano <- ggplot(fp_dat, aes(x = Change, y = -log10(Pvalue))) +
+    geom_point() +
+    facet_grid(.~id)
+
+```
+
+
+
+
+### 
