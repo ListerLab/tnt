@@ -248,6 +248,8 @@ ATAC-seq PCA
 
 # Read ATAC metadata
 mdat_atac <- read.csv("atac/atac_metadata.csv")
+colnames(mdat_atac)[colnames(mdat_atac)=="group"] <- "State"
+mdat_atac$Manuscript.Name <- mdat_atac$id
 
 # Read ATAC counts matrix
 dat_atac <- read.table("atac/psc_peaks.narrowPeak.counts.txt.gz")
@@ -276,9 +278,11 @@ dat_atac <- dat_atac[atac_keep, ]
 
 # normalise and split the data by genes and TE's for plotting
 atac_norm <- voom(dat_atac, normalize.method = "quantile")
+atac_norm <- atac_norm$E
 
 ### PCA plot of ATAC
-atac_pca <- plot_pca_2(mat = atac_norm$E, mdat = mdat_atac, scale = FALSE)
+
+atac_pca <- plot_pca_2(mat = atac_norm, mdat = mdat_atac, scale = FALSE)
 atac_pca <- atac_pca + ggtitle("", "ATAC-seq")
 
 atac_pca
@@ -1035,7 +1039,7 @@ openxlsx::writeData(wb = wb_fig4, sheet = "Fig_4f",
 
 ## Volcano and MA plots of differential ATAC peaks
 ```{r, cache=TRUE}
-atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt")
+atac_tt <- read.table("atac/MEL1_differential_atac_peak_table.txt.gz")
 atac_tt <- atac_tt[order(atac_tt$FDR, decreasing = TRUE), ]
 atac_tt$contrast <- str_remove(string = atac_tt$contrast, pattern = "group")
 atac_tt$contrast <- factor(atac_tt$contrast, levels = c("Primed", "TNT", "NtP"))
@@ -1087,7 +1091,7 @@ gg_ma_gene <- ggplot(gene_df, aes(x = logCPM, y=-logFC, fill=significant, colour
               geom_point(alpha=0.5, size=0.8) +
               xlab("Log2 CPM") + ylab("Log2 fold change") +
               geom_hline(yintercept = c(-1, 1), alpha=0.5, linetype='dashed') +
-              geom_vline(xintercept = 1, alpha=0.5, linetype='dashed') +
+              geom_vline(xintercept = 0, alpha=0.5, linetype='dashed') +
               sams_pub_theme(x.text.angle = 0, legend_pos = "right")
 
 png("manuscript_figure_plots/MEL1_gene_ma_plots.png", width = 4.5, height = 1.3, units = "in", res = 600)
@@ -1336,6 +1340,8 @@ openxlsx::saveWorkbook(wb = wb_ed_fig8e,
 
 
 ```{r}
+
+wb_ed_fig9 <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb = wb_ed_fig9, sheetName = "ED_Fig_9e")
 openxlsx::writeData(wb = wb_ed_fig9, sheet = "ED_Fig_9e",
                     x = imprint_cpm)
