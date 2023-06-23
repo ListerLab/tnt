@@ -5,7 +5,7 @@ Analysis code for Buckberry, Liu, Poppe, Tan et al. "Epigenetic and functional c
 Sequence data for this study are accessible under GEO SuperSeries GSE159297.
 
 ### Markdown generated HTML files with analysis code for figures
-- [Figure 1 and associated Extended Data Figures](Figure_1.html)
+- [Figure 1 and associated Extended Data Figures](Figure_1.md)
 - [Figure 2 and associated Extended Data Figures](Fig_2.html)
 - [Figure 3 and associated Extended Data Figures](Fig_3.html)
     - [Extended Data Figure 2b: CNV analysis](ED_Fig_2b.html)
