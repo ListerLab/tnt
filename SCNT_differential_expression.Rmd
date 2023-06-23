@@ -2,7 +2,6 @@
 title: 'Differential expression: SCNT reprogramming (Ma et al. Nature 2014 data)'
 date: "`r Sys.Date()`"
 author: "Sam Buckberry"
-output: github_document
 ---
 
 # Measuring differential expression of transposable elements

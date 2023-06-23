@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "hiPSC differentiation analysis"
 author: "Sam Buckberry"
 date: "`r Sys.Date()`"
 output: html_document
@@ -153,6 +153,15 @@ dev.off()
 pdf("differentiation_expts/plots/nsc_all.pdf", height = 1.95, width = 3)
 plot_diff(diff = "NSC")
 dev.off()
+```
+
+
+```{r}
+plot_diff(diff = "Butcher_Endoderm")
+plot_diff(diff = "Lung")
+plot_diff(diff = "Skeletal_Muscle")
+plot_diff(diff = "Neural")
+plot_diff(diff = "NSC")
 ```
 
 Calculate differentiation stats
@@ -313,7 +322,7 @@ openxlsx::saveWorkbook(wb = wb_ed_fig10_all,
 
 
 
-```{r}
+```{r, eval=FALSE}
 library(gt)
 
 colnames(tt_clean)[5:11] <- c("Primed(n)", "TNT(n)", "Primed(%)", "TNT(%)",
@@ -372,7 +381,6 @@ tab <- tt_join %>% gt(groupname_col ="Differentiation") %>%
     tab_footnote(footnote = "Significance:  <0.0001 '***', <0.001 '**', <0.01 '*', <0.05 '.'") %>%
     tab_footnote(footnote = "Primed(n) and TNT(n) represent the number of samples in each group for statistical testing")
 
-Sys.setenv(CHROMOTE_CHROME = "/Applications/Brave\ Browser.app/Contents/MacOS/Brave\ Browser")
-gtsave(data = tab, filename = "differentiation-stats-table.pdf", path = "manuscript_figure_layouts/resubmission/")
+gtsave(data = tab, filename = "differentiation-stats-table.pdf", path = "differentiation_expts/")
 ```
 

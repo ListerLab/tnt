@@ -1,0 +1,793 @@
+Differentiation,Line,Group,State,ID_as_in_raw_data_sheet,Target,Value
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,3.48599E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,2.27611E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,8.1205E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,5.12151E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,2.76364E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,SOX17,2.17583E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,5.4891E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,2.84133E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,5.10379E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,9.75789E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,2.51676E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,FOXA2,4.48954E-06
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000123
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000321
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000421
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000551
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000369
+Endoderm,HDF,Primed,Primed-hiPSC,HDF-Primed-hiPSC,CXCR4,0.000136
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.001754165
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.003582
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.003645
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.002299
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.002043
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,SOX17,0.002438
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,0.000530632
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,0.000712412
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,0.000624505
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,6.91457E-05
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,0.000557014
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,FOXA2,0.000194223
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.005505159
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.008519592
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.007238969
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.001357
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.002734
+Endoderm,HDF,Primed,Primed-Endoderm,HDF-Primed hiPSC Endoderm Differentiation,CXCR4,0.005505
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SOX17,0.007652
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SOX17,0.00628
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SOX17,0.005719
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA2,0.00038
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA2,0.00032
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA2,0.000308
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,CXCR4,0.002696
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,CXCR4,0.00213
+Endoderm,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,CXCR4,0.001867
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,SOX17,0.065835065
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,SOX17,0.03103414
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,SOX17,0.035402621
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,FOXA2,0.00239626
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,FOXA2,0.000346466
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,FOXA2,0.000798732
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,CXCR4,0.026923317
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,CXCR4,0.025382887
+Endoderm,MSC,Primed,Primed-Endoderm,MSC-Primed hiPSC Endoderm Differentiation,CXCR4,0.039968299
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SOX17,0.0000887
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SOX17,0.000136
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SOX17,0.000395
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA2,0.0000139
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA2,0.0000124
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA2,0.0000231
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,CXCR4,0.000616
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,CXCR4,0.000267
+Endoderm,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,CXCR4,0.000836
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,SOX17,0.016458766
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,SOX17,0.037291742
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,SOX17,0.051653
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,FOXA2,4.25642E-05
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,FOXA2,6.86681E-05
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,FOXA2,4.73919E-05
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,CXCR4,0.001665
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,CXCR4,0.002438
+Endoderm,NHEK,Primed,Primed-Endoderm,NHEK-Primed hiPSC Endoderm Differentiation,CXCR4,0.00285
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,7.30304E-07
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,2.0231E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,1.84877E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,1.68137E-05
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,3.36724E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SOX17,1.54389E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,3.97138E-05
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,0.000115086
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,1.09929E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,0.000005051
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,3.58399E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA2,4.89588E-06
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.000421
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.000399
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.00033
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.000311
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.000818
+Endoderm,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,CXCR4,0.000595
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.040808118
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.072543995
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.042541066
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.090873282
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.046552
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,SOX17,0.03983
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000927092
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000205297
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000125938
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000215504
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000568718
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,FOXA2,0.000877082
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.007651721
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.005778857
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.004275
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.007164
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.00455
+Endoderm,HDF,TNT,TNT-Endoderm,HDF-TNT hiPSC Endoderm Differentiation,CXCR4,0.00455
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SOX17,0.00586
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SOX17,0.004456
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SOX17,0.007366
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA2,0.00027
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA2,0.000163
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA2,0.000272
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,CXCR4,0.00192
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,CXCR4,0.00162
+Endoderm,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,CXCR4,0.001861
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,SOX17,0.056523711
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,SOX17,0.049206749
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,SOX17,0.023035457
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,FOXA2,0.004044004
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,FOXA2,0.002306626
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,FOXA2,0.002029022
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,CXCR4,0.02005353
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,CXCR4,0.023035457
+Endoderm,MSC,TNT,TNT-Endoderm,MSC-TNT hiPSC Endoderm Differentiation,CXCR4,0.018906158
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SOX17,0.000122
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SOX17,0.000605
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SOX17,0.000272
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA2,0.0000117
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA2,0.000028
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA2,0.0000351
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,CXCR4,0.000715
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,CXCR4,0.000707
+Endoderm,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,CXCR4,0.000292
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,SOX17,0.008201
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,SOX17,0.009388
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,SOX17,0.005392
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,FOXA2,0.003172861
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,FOXA2,0.001511294
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,FOXA2,0.001730015
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,CXCR4,0.00289946
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,CXCR4,0.001967
+Endoderm,NHEK,TNT,TNT-Endoderm,NHEK-TNT hiPSC Endoderm Differentiation,CXCR4,0.001724
+Endoderm,MEL1,hESC,hESC,hESC,SOX17,0
+Endoderm,MEL1,hESC,hESC,hESC,SOX17,0
+Endoderm,MEL1,hESC,hESC,hESC,FOXA2,0
+Endoderm,MEL1,hESC,hESC,hESC,FOXA2,0
+Endoderm,MEL1,hESC,hESC,hESC,CXCR4,0.000334
+Endoderm,MEL1,hESC,hESC,hESC,CXCR4,0.000401
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,SOX17,0.126745
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,SOX17,0.090873
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,SOX17,0.157127
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,SOX17,0.140632
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,FOXA2,0.00403
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,FOXA2,0.001554
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,FOXA2,0.00426
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,FOXA2,0.002079
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,CXCR4,0.051296
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,CXCR4,0.03082
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,CXCR4,0.052012
+Endoderm,MEL1,hESC,hESC-Endoderm,hESC Endoderm Differentiation,CXCR4,0.029977
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,SOX17,0
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,SOX17,0
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,FOXA2,0.00000124
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,FOXA2,0.00000107
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,CXCR4,0.000168
+Endoderm,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,CXCR4,0.000169
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,SOX17,0.110338
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,SOX17,0.071051
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,SOX17,0.143091
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,SOX17,0.109197
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA2,0.001829
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA2,0.001754
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA2,0.001913
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA2,0.002371
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,CXCR4,0.023035
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,CXCR4,0.026923
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,CXCR4,0.023196
+Endoderm,MEL1,Primed,Primed-Endoderm,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,CXCR4,0.026737
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,SOX17,0.00000193
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,SOX17,0
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,FOXA2,0.00000309
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,FOXA2,0.00000185
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,CXCR4,0.0000909
+Endoderm,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,CXCR4,0.000104
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,SOX17,0.009323
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,SOX17,0.17739
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,SOX17,0.013322
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,SOX17,0.137738
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA2,0.000159
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA2,0.0019
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA2,0.000191
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA2,0.001161
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,CXCR4,0.001215
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,CXCR4,0.031467
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,CXCR4,0.001173
+Endoderm,MEL1,TNT,TNT-Endoderm,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,CXCR4,0.010344
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,2.8611E-06
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,2.05846E-06
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,2.18339E-06
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,1.92062E-06
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,0.000004762
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,GATA6,3.1636E-06
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,3.91671E-05
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,0.000038361
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,3.36275E-05
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,5.27672E-05
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,3.27079E-05
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PROX1,3.74416E-05
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000116
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000179
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000128
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000447
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000141
+Lung,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,FOXA1,0.00000774
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.006258358
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.004364403
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.001748096
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.00243
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.002152
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,GATA6,0.004678
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.000206725
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.000419221
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.000323264
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.000483
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.00052
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,PROX1,0.000413
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.00390625
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.003773189
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.002568248
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.006968
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.006968
+Lung,HDF,Primed,Primed-Lung,HDF-Primed hiPSC Endoderm Differentiation,FOXA1,0.006848
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,GATA6,0.001271
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,GATA6,0.001797
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,GATA6,0.001169
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PROX1,7.25834E-05
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PROX1,6.84305E-05
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PROX1,8.05364E-05
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA1,4.33082E-05
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA1,3.46929E-05
+Lung,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,FOXA1,0.000032146
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,GATA6,0.007598867
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,GATA6,0.009099481
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,GATA6,0.004115
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,PROX1,0.001046654
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,PROX1,0.000631032
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,PROX1,0.000459
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,FOXA1,0.007704943
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,FOXA1,0.004157696
+Lung,MSC,Primed,Primed-Lung,MSC-Primed hiPSC Endoderm Differentiation,FOXA1,0.008229
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,GATA6,0.0000249
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,GATA6,0.0000069
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,GATA6,0.0000754
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PROX1,0.000060824
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PROX1,0.000135916
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PROX1,4.80535E-05
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA1,2.45644E-06
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA1,5.47011E-06
+Lung,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,FOXA1,1.96778E-06
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,GATA6,0.000874048
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,GATA6,0.000727382
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,GATA6,0.000443
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,PROX1,0.002259157
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,PROX1,0.001334
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,PROX1,0.002586
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,FOXA1,0.001959906
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,FOXA1,0.001784827
+Lung,NHEK,Primed,Primed-Lung,NHEK-Primed hiPSC Endoderm Differentiation,FOXA1,0.002613
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,3.08778E-06
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,4.99875E-06
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,1.81701E-06
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,1.30276E-06
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,1.37704E-06
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,GATA6,0
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,5.07934E-05
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,4.28603E-05
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,3.52993E-05
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,4.30091E-05
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,4.69017E-05
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PROX1,0
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0.00000112
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0.00000235
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0.00000186
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0.00000215
+Lung,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,FOXA1,0
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.00013451
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.000113502
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.000258957
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.000500272
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.000832651
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,GATA6,0.000649
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.000384428
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.000313336
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.000572673
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.000399366
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.000484908
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,PROX1,0.00048
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.000582683
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.000432504
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.000437024
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.000457164
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.000478233
+Lung,HDF,TNT,TNT-Lung,HDF-TNT hiPSC Endoderm Differentiation,FOXA1,0.001185737
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,GATA6,0.000987
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,GATA6,0.000669
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,GATA6,0.00111
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PROX1,8.54239E-05
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PROX1,0.000128139
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PROX1,7.03544E-05
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA1,2.66593E-05
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA1,2.67519E-05
+Lung,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,FOXA1,4.97481E-05
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,GATA6,0.005299236
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,GATA6,0.006479059
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,GATA6,0.003097
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,PROX1,0.001249009
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,PROX1,0.001371528
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,PROX1,0.001559
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,FOXA1,0.00319493
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,FOXA1,0.00286947
+Lung,MSC,TNT,TNT-Lung,MSC-TNT hiPSC Endoderm Differentiation,FOXA1,0.005983
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,GATA6,0.0000164
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,GATA6,0.000151
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,GATA6,0.0000336
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PROX1,4.43717E-05
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PROX1,7.18327E-05
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PROX1,9.21919E-05
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA1,2.34822E-06
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA1,4.99875E-06
+Lung,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,FOXA1,1.73096E-06
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,GATA6,0.001106332
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,GATA6,0.00108
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,GATA6,0.000816
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,PROX1,0.002152158
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,PROX1,0.001570021
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,PROX1,0.003195
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,FOXA1,0.003424241
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,FOXA1,0.001974
+Lung,NHEK,TNT,TNT-Lung,NHEK-TNT hiPSC Endoderm Differentiation,FOXA1,0.003195
+Lung,MEL1,hESC,hESC,hESC,GATA6,0
+Lung,MEL1,hESC,hESC,hESC,GATA6,0
+Lung,MEL1,hESC,hESC,hESC,PROX1,0.0000762
+Lung,MEL1,hESC,hESC,hESC,PROX1,0.000162
+Lung,MEL1,hESC,hESC,hESC,FOXA1,0.001822
+Lung,MEL1,hESC,hESC,hESC,FOXA1,0.003472
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,GATA6,0.003002
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,GATA6,0.002086
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,GATA6,0.00281
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,GATA6,0.00296
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,PROX1,0.000758
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,PROX1,0.000651
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,PROX1,0.001118
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,PROX1,0.00081
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,FOXA1,0.00566
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,FOXA1,0.006151
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,FOXA1,0.00709
+Lung,MEL1,hESC,hESC-Lung,hESC Endoderm Differentiation,FOXA1,0.007922
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,GATA6,0.000000509
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,GATA6,0
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PROX1,0.0000968
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PROX1,0.00023
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,FOXA1,0.0000146
+Lung,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,FOXA1,0.0000376
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,GATA6,0.002347
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,GATA6,0.001637
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,GATA6,0.002687
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,GATA6,0.001797
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PROX1,0.001153
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PROX1,0.001202
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PROX1,0.001565
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PROX1,0.001501
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA1,0.008287
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA1,0.008609
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA1,0.009855
+Lung,MEL1,Primed,Primed-Lung,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,FOXA1,0.010896
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,GATA6,0
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,GATA6,0.00000113
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PROX1,0.0000424
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PROX1,0.0000636
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,FOXA1,0.000000701
+Lung,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,FOXA1,0.00000293
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,GATA6,0.002388
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,GATA6,0.004058
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,GATA6,0.00264
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,GATA6,0.004158
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PROX1,0.00073
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PROX1,0.000883
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PROX1,0.001149
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PROX1,0.000997
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA1,0.006172
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA1,0.006547
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA1,0.007759
+Lung,MEL1,TNT,TNT-Lung,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,FOXA1,0.007164
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,4.15996E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,2.90104E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,2.37276E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,2.45644E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,2.22927E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROG1,2.22927E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,0.000010531
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,5.7024E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,5.1571E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,1.7735E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,9.7918E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX6,3.8546E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,1.35338E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,2.3401E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,0.000002881
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,1.68947E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,3.4261E-06
+Neural,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,NEUROD1,3.69755E-06
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.009162773
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.006777646
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.003839143
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.0078125
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.008060025
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROG1,0.003582047
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.009585039
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.004502681
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.007188966
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.005543451
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.004274585
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,PAX6,0.006412044
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.001454763
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.002762136
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.00227487
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.003424241
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.001500855
+Neural,HDF,Primed,Primed-Neural,HDF-Primed hiPSC Endoderm Differentiation,NEUROD1,0.00156459
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROG1,5.66301E-06
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROG1,5.74206E-06
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROG1,9.4255E-06
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX6,0.000080258
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX6,0.000056359
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX6,0.000068194
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROD1,4.26781E-07
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROD1,5.64342E-06
+Neural,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,NEUROD1,0
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROG1,0.000246692
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROG1,0.000275626
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROG1,0.000244141
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,PAX6,0.00522628
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,PAX6,0.00464534
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,PAX6,0.001227552
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROD1,5.15024E-05
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROD1,0.000158306
+Neural,MSC,Primed,Primed-Neural,MSC-Primed hiPSC Endoderm Differentiation,NEUROD1,0.000208163
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROG1,2.6695E-06
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROG1,0
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROG1,7.89844E-06
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX6,0.000010102
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX6,4.5365E-06
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX6,0.000012308
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROD1,3.59644E-06
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROD1,8.44734E-07
+Neural,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,NEUROD1,2.67877E-06
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROG1,0.010344445
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROG1,0.014884969
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROG1,0.019846109
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,PAX6,0.02683017
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,PAX6,0.022173802
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,PAX6,0.012301687
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROD1,0.000667012
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROD1,0.000673983
+Neural,NHEK,Primed,Primed-Neural,NHEK-Primed hiPSC Endoderm Differentiation,NEUROD1,0.000357443
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,3.97669E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,4.92993E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,7.34401E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,3.32089E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,6.00668E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROG1,1.96097E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,4.7291E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,7.8167E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,9.7918E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,3.0878E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,0.000012097
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX6,3.5224E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,2.51676E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,3.01377E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,3.62145E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,2.45644E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,5.10379E-06
+Neural,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,NEUROD1,0.000004664
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.013139006
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.014629254
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.022561394
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.015356572
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.017397213
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROG1,0.01277972
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.043737058
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.010821168
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.028557233
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.028261856
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.019303416
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,PAX6,0.024264652
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.00242971
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.002122529
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.005083367
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.003129179
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.002714684
+Neural,HDF,TNT,TNT-Neural,HDF-TNT hiPSC Endoderm Differentiation,NEUROD1,0.002050228
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROG1,1.10163E-05
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROG1,0.000005051
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROG1,6.04846E-06
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX6,0.000066329
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX6,0.000065643
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX6,0.000052585
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROD1,7.19288E-06
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROD1,1.7858E-06
+Neural,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,NEUROD1,5.9859E-06
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROG1,0.000075404
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROG1,0.000031051
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROG1,2.41101E-05
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,PAX6,0.007065464
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,PAX6,0.001485331
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,PAX6,0.003544997
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROD1,6.84305E-05
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROD1,2.65671E-05
+Neural,MSC,TNT,TNT-Neural,MSC-TNT hiPSC Endoderm Differentiation,NEUROD1,9.69048E-06
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROG1,0
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROG1,6.34917E-06
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROG1,0
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX6,4.6318E-06
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX6,0.000018146
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX6,0
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROD1,7.35383E-07
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROD1,2.97228E-06
+Neural,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,NEUROD1,3.58399E-06
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROG1,1.36097E-05
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROG1,4.97481E-05
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROG1,1.36097E-05
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,PAX6,0.003865846
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,PAX6,0.005410584
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,PAX6,0.008668512
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROD1,0.000454006
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROD1,0.000166176
+Neural,NHEK,TNT,TNT-Neural,NHEK-TNT hiPSC Endoderm Differentiation,NEUROD1,9.34789E-05
+Neural,MEL1,hESC,hESC,hESC,NEUROG1,0.0000157
+Neural,MEL1,hESC,hESC,hESC,NEUROG1,0.00000611
+Neural,MEL1,hESC,hESC,hESC,PAX6,0.00000367
+Neural,MEL1,hESC,hESC,hESC,PAX6,0.00000541
+Neural,MEL1,hESC,hESC,hESC,NEUROD1,0.00000639
+Neural,MEL1,hESC,hESC,hESC,NEUROD1,0.0000075
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROG1,0.0000121
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROG1,0.0000192
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROG1,0.0000176
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROG1,0.0000175
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,PAX6,0.01917
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,PAX6,0.056328
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,PAX6,0.021642
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,PAX6,0.062717
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROD1,0.0000164
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROD1,0.000983
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROD1,0.0000198
+Neural,MEL1,hESC,hESC-Neural,hESC Endoderm Differentiation,NEUROD1,0.000956
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,NEUROG1,0.00000798
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,NEUROG1,0.00000639
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX6,0.0000313
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX6,0.0000531
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,NEUROD1,0.00000102
+Neural,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,NEUROD1,0.00000345
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROG1,0.001592
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROG1,0.001316
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROG1,0.00267731
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROG1,0.002022002
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PAX6,0.010896435
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PAX6,0.017277041
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PAX6,0.009585
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,PAX6,0.012736
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROD1,0.000599
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROD1,0.000973
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROD1,0.000626673
+Neural,MEL1,Primed,Primed-Neural,Secondary Fibroblast Primed-hiPSC Endoderm Differentiation,NEUROD1,0.000973184
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,NEUROG1,0.00000164
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,NEUROG1,0.00000309
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX6,0.00000222
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX6,0.00000462
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,NEUROD1,0.00000332
+Neural,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,NEUROD1,0.00000236
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROG1,0.0000481
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROG1,0.0000237
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROG1,0.0000511
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROG1,0.0000666
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PAX6,0.030395
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PAX6,0.026737
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PAX6,0.034554
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,PAX6,0.032464
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROD1,0.0000352
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROD1,0.0000104
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROD1,0.0000417
+Neural,MEL1,TNT,TNT-Neural,Secondary Fibroblast-TNT hiPSC Endoderm Differentiation,NEUROD1,0.0000298
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.0000028
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.00000261
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.00000372
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.00000601
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.00000138
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX3,0.00000291
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.00000366
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.00000267
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.00000462
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.00000106
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.0000056
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,PAX7,0.00000316
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.0000783
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.0000346
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.000168
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.000331
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.000165
+Muscle,HDF,Primed,Primed-hiPSC,HDF-Primed hiPSC ,SIX1,0.000065
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.007625248
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.008850655
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.010026765
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.00875911
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.009387782
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.010709241
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003022588
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003544997
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.002859542
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.002282768
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003250776
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.005208
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.002346945
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.001953125
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.002498019
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.002314634
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.00191293
+Muscle,HDF,Primed,Primed-Muscle,HDF-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.002695932
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX3,1.85915E-05
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX3,2.64752E-05
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX3,3.61662E-05
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX7,5.03352E-06
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX7,9.4255E-06
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,PAX7,9.72413E-06
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SIX1,0.000229
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SIX1,0.000312
+Muscle,MSC,Primed,Primed-hiPSC,MSC-Primed hiPSC ,SIX1,0.00013
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.015953314
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.023035457
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.018841
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003239529
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003786288
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.003919812
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.00350833
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.002771725
+Muscle,MSC,Primed,Primed-Muscle,MSC-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.004114692
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX3,2.49938E-06
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX3,4.18889E-06
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX3,0
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX7,0.000001836
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX7,1.13805E-06
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,PAX7,3.89485E-06
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SIX1,0.000219
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SIX1,0.0000289
+Muscle,NHEK,Primed,Primed-hiPSC,NHEK-Primed hiPSC ,SIX1,0.000176
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.045594
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.048867
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX3,0.05366
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.007017
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.009388
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,PAX7,0.006258
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.001829
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.003721242
+Muscle,NHEK,Primed,Primed-Muscle,NHEK-Primed hiPSC Skeletal Muscle Differentiation,SIX1,0.003296155
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0.0000087
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0.0000247
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0.00000576
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0.00000112
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX3,0.0000262
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000172
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000306
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000379
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000666
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000485
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,PAX7,0.00000112
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.000298
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.000342
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.00014
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.0000477
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.0005
+Muscle,HDF,TNT,TNT-hiPSC,HDF-TNT hiPSC ,SIX1,0.000107
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.009485898
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.002167128
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.001357342
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.011202775
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.002506691
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.001424825
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.00196671
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.000301616
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.000461942
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.000247549
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.000611653
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.000323
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000406347
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000245839
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000435512
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000198992
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000638
+Muscle,HDF,TNT,TNT-Muscle,HDF-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.002123
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX3,1.64677E-05
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX3,8.37778E-06
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX3,2.45316E-05
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX7,6.15419E-06
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX7,6.71119E-06
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,PAX7,1.22234E-05
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SIX1,0.000311
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SIX1,0.000205
+Muscle,MSC,TNT,TNT-hiPSC,MSC-TNT hiPSC ,SIX1,0.000161
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.01589812
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.012473412
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.019573
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.003262062
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.002929764
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.002174652
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.003532732
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.00236327
+Muscle,MSC,TNT,TNT-Muscle,MSC-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.002970662
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX3,0
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX3,3.13088E-06
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX3,3.35559E-06
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX7,0
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX7,4.14556E-06
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,PAX7,0
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SIX1,0.0000925
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SIX1,0.000194
+Muscle,NHEK,TNT,TNT-hiPSC,NHEK-TNT hiPSC ,SIX1,0.0000481
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.022483
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.033262
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.018972
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.004927
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.005429
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.006754
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000115
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000434
+Muscle,NHEK,TNT,TNT-Muscle,NHEK-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.000236643
+Muscle,MEL1,hESC,hESC,hESC,PAX3,0
+Muscle,MEL1,hESC,hESC,hESC,PAX3,0
+Muscle,MEL1,hESC,hESC,hESC,PAX7,0.001803
+Muscle,MEL1,hESC,hESC,hESC,PAX7,0.001994
+Muscle,MEL1,hESC,hESC,hESC,SIX1,0.0000489
+Muscle,MEL1,hESC,hESC,hESC,SIX1,6.23176E-05
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX3,0.003296
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX3,0.018517
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX3,0.00438
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX3,0.027584
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX7,0.002762
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX7,0.000963
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX7,0.00346
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,PAX7,0.001311
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,SIX1,0.011598
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,SIX1,0.003696
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,SIX1,0.013984767
+Muscle,MEL1,hESC,hESC-Muscle,hESC Skeletal Muscle Differentiation,SIX1,0.004471579
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX3,0
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX3,0
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX7,0.0000903
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,PAX7,0.0000932
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,SIX1,0.000028
+Muscle,MEL1,Primed,Primed-hiPSC,Secondary Fibroblast-Primed hiPSC,SIX1,0.0000268
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX3,0.001822
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX3,0.018073
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX3,0.002899
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX3,0.022956
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX7,0.000451
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX7,0.006547
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX7,0.00061
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,PAX7,0.006302
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,SIX1,0.010784
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,SIX1,0.002228
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,SIX1,0.011842
+Muscle,MEL1,Primed,Primed-Muscle,Secondary Fibroblast Primed-hiPSC Skeletal Muscle Differentiation,SIX1,0.002057
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX3,0
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX3,0
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX7,0
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,PAX7,0
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,SIX1,0.0000238
+Muscle,MEL1,TNT,TNT-hiPSC,Secondary Fibroblast-TNT hiPSC,SIX1,1.87858E-05
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.005962
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.011842
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.008373
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX3,0.021567
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.00176
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.001841
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.002355
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,PAX7,0.002724
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.003319
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.002677
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.003632051
+Muscle,MEL1,TNT,TNT-Muscle,Secondary Fibroblast-TNT hiPSC Skeletal Muscle Differentiation,SIX1,0.003183876
