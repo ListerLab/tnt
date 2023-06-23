@@ -2,7 +2,7 @@
 
 Analysis code for Buckberry, Liu, Poppe, Tan et al. "Epigenetic and functional correction of human iPS cells by transient naive reprogramming"
 
-Sequence data for this study are accessible under GEO SuperSeries GSE159297.
+Sequence data for this study are accessible under [GEO SuperSeries GSE159297](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE159297).
 
 ### Markdown generated HTML files with analysis code for figures
 - [Figure 1 and associated Extended Data Figures](Figure_1.md)
@@ -16,7 +16,7 @@ Sequence data for this study are accessible under GEO SuperSeries GSE159297.
 - [Figure 4 and associated Extended Data Figures]()
     - [Extended Data Figure 8k: Choi et al. reanalysis](Choi_ESC_iPSC_differential_expression.html)
     - [Extended Data Figure 8l: Ma et al. reanalysis](SCNT_differential_expression.html)
-    - [Extended Data Figure 9c,d,e: Evaluation of published criteria](REVISION_Koyanagi_Ruiz_genes_TE_methylation.html)
+    - [Extended Data Figure 9c,d,e: Evaluation of published criteria](REVISION_Koyanagi_Ruiz_genes_TE_methylation.md)
 - [Figure 5 and associated Extended Data Figures](REVISION_differentiation_quantifications.html)  
 - [CG-DMR analyses](CG_DMR_analysis.html)
 - [CH-DMR analyses](CH_DMR_analysis.nb.html)
