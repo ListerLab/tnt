@@ -15,7 +15,7 @@ mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
 all(file.exists(mdat$BSseq_CG))
 ```
 
-## CG-DMR analysis
+### CG-DMR analysis
 CG-DMRs were called using the script `wgbs/dmrs/run_dmrseq_dug.R`
 Output `.Rds` objects are a list containing the DMRs as a GRanges object and a sample table with group, library and input file information.
 DMR files are in the folders prefixed with `wgbs/dmrs/dmrseq_*`
@@ -143,10 +143,11 @@ dmr_a <- readRDS("wgbs/dmrs/dmrseq_primed_vs_esc_original/dmrseq_primed_vs_esc_o
 ```
 
 Process the DMR data
-```{r, cache=TRUE, echo=FALSE, message=FALSE}
+```{r, cache=TRUE, message=FALSE}
 dmr_a <- process_dmr(dmr_a)
 ```
 
+**Figure 2a**
 Barplot DMR count
 ```{r, cache=TRUE}
 ## Barplot DMR count
@@ -193,6 +194,7 @@ openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2a",
                     x = dmr_a_counts_gg$data)
 ```
 
+**Figure 2b**
 DMR scatterplot with progenitor cell data
 ```{r, cache=TRUE}
 
@@ -309,9 +311,9 @@ openxlsx::writeData(wb = wb_fig2, sheet = "Fig_2b",
 ```{r, cache=TRUE}
 table(dmr_delta_df$dmr)
 ```
-
+**Figure 2c,d; Extended Data Figure 1l**
 Time course plots of DMR change
-```{r, cache=TRUE, fig.width=3}
+```{r, cache=TRUE, fig.width=3, message=FALSE, error=FALSE, warning=FALSE}
 
 timecourse_samples <- c("RL415", "RL413", "RL399",
                         "RL414", "RL698", "RL411", "RL412",
@@ -513,7 +515,7 @@ openxlsx::writeData(wb = wb_ed_fig1_jkl, sheet = "ED_Fig_1k",
 ```{r, fig.width=3, fig.height=6, cache=TRUE}
 gg_z
 ```
-
+**Extended Data Figure 1k**
 Heatmap DMRs for timecourse
 ```{r, cache=TRUE}
 heatmap_samples <- c("RL415", "RL702", "RL413", "RL399",
@@ -595,7 +597,8 @@ saveRDS(icr_mCG, "wgbs/processed_data/icr_mcg_all.Rds")
 icr_mCG <- readRDS("wgbs/processed_data/icr_mcg_all.Rds")
 ```
 
-Create timecourse boxplots for Fig 2 and Fig S2
+**Figure 2e; Extended Data Figure 1n**
+ICR timecourse boxplots
 ```{r, cache=TRUE}
 icr_timecourse <- c("RL415", "RL702", "RL413", "RL399",
                      "RL414", "RL698", "RL411", "RL412",

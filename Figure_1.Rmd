@@ -18,7 +18,7 @@ Load the sample metadata
 ds <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
 ```
 
-Plot mCG in regulatory elements
+Calculate mCG in GeneHancer regulatory elements. Table `resources/hg19_USCS_geneHancerClusteredInteractionsDoubleElite.txt` downloaded from UCSC table browser.
 ```{r, cache=TRUE}
 # read in enhancer database
 enh_dat <- read.table(file = "resources/hg19_USCS_geneHancerClusteredInteractionsDoubleElite.txt")
@@ -71,7 +71,8 @@ reg_mCG_mat <- reg_mCG_mat[complete.cases(reg_mCG_mat), ]
 saveRDS(reg_mCG_mat, file = "wgbs/processed_data/mCG_regulatory_element_data.Rds")
 ```
 
-PCA of regulatory element mCG
+**Figure 1d**
+Plot PCA of regulatory element mCG
 ```{r, cache=TRUE}
 reg_mCG_mat <- readRDS("wgbs/processed_data/mCG_regulatory_element_data.Rds")
 
@@ -143,6 +144,8 @@ wb_fig1 <- openxlsx::createWorkbook()
 #                       file = "Figure_1_source_data.xlsx", overwrite = TRUE)
 ```
 
+
+**Extended Data Figure 1i**
 Plot regulatory elements that change between d0 and d7; day 13 and primed, and both to see OKSM induced changes
 ```{r, cache=TRUE}
 
@@ -218,6 +221,8 @@ openxlsx::writeData(wb = wb_ed_fig1, sheet = "ED_Fig_1h",
 
 ```
 
+
+**Figure 1b,c**
 Plot genome-wide mC levels
 ```{r, cache=TRUE, message=FALSE, error=FALSE, warning=FALSE}
 
@@ -471,6 +476,7 @@ openxlsx::saveWorkbook(wb = wb_fig1,
 
 ```
 
+**Figure 1e**
 C-means clustering of regulatory elements
 ```{r, cache=TRUE}
 
@@ -886,6 +892,7 @@ openxlsx::writeData(wb = wb_fig1, sheet = "Fig_1e_rna",
                     x = gg_gene$data)
 ```
 
+**Figure 1f**
 Export cluster gene lists for ontology analysis
 ```{r, cache=TRUE}
 clus_ids <- unique(tpm_cluster$cluster) %>% as.character()
@@ -982,8 +989,6 @@ write.table(all_go_dat,
             file = "wgbs/processed_data/cmeans_ontology/all_ontology_results.txt",
             quote = FALSE, sep = "\t", row.names = TRUE, col.names = TRUE)
 ```
-
-### Plot the motif enrichments
 
 Run Homer to find motifs
 ```{bash, eval=FALSE}
@@ -1111,7 +1116,8 @@ openxlsx::saveWorkbook(wb = wb_fig1,
 gg_motif
 ```
 
-### Global mC stats 
+**Extended Data Figure 1c,d,e**
+Global mC stats 
 ```{r, eval=FALSE, cache=TRUE}
 get_oz_plot_stats <- function(rds_path, cov_min=4){
 
@@ -1221,7 +1227,7 @@ openxlsx::writeData(wb = wb_ed_fig1, sheet = "ED_Fig_1c",
 gg
 ```
 
-### Global mCH plots
+Global mCH plots
 ```{r, cache=TRUE}
 ids <- gg$data$id[!grepl(pattern = "H9_", x = gg$data$id)]
 stats_ind <- match(ids, basename(ds$BSseq_CG))
@@ -1418,7 +1424,8 @@ dev.off()
 
 ```
 
-### Gene expression plots
+**Extended Data Figure 1b,f,g**
+Gene expression plots
 run with script "RNAseq/analysis_scripts/plot-gene-timecourse.R"
 ```{r, cache=TRUE}
 tpm <- read.table("RNAseq/processed_data/timcourse_RNAseq_hg19_UCSC_tpm.txt")
