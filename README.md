@@ -7,7 +7,7 @@ Raw and processed data for this study are accessible under [GEO SuperSeries GSE1
 ### Markdown generated HTML files with analysis code for figures
 - [Figure 1 and associated Extended Data Figures](Figure_1.md)
 - [Figure 2 and associated Extended Data Figures](Fig_2.md)
-- [Figure 3 and associated Extended Data Figures](Fig_3.html)
+- [Figure 3 and associated Extended Data Figures](Fig_3.md)
     - [Extended Data Figure 2b: CNV analysis](ED_Fig_2b_CNV_analysis.md)
     - [Extended Data Figure 2g,h,i: Ma et al. re-analysis]()
     - [Extended Data Figure 3f,g,h: Primed-Naive-Primed analysis]()
