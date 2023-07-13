@@ -2,7 +2,7 @@
 title: "Figure 3 and associated extended data figures"
 author: "Sam Buckberry"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
 ---
 
 ```{r, message=FALSE, warning=FALSE, error=FALSE}

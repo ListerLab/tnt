@@ -219,7 +219,7 @@ plot_pca(all_dmr_mCG, scale = FALSE, dim1 = 3, dim2 = 4)
 
 Clustered heatmap with k-means reduction for clustering DMRs
 ```{r, cache=TRUE}
-pheatmap(union_mCG[complete.cases(union_mCG), ], kmeans_k = 1000)
+#pheatmap(union_mCG[complete.cases(union_mCG), ], kmeans_k = 1000)
 ```
 
 
@@ -364,4 +364,8 @@ UpSetR::upset(hits_ch, order.by = "freq", nsets = 8)
 
 
 
+Session info
+```{r}
+sessionInfo()
+```
 
