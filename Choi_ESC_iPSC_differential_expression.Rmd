@@ -2,14 +2,14 @@
 title: "Choi et al. (2015) Nat. Biotech reanalysis: transposable elements"
 author: "Sam Buckberry"
 date: "29/06/2020"
-output: html_document
+output: github_document
 ---
 
 ```{r}
 source("R/project_functions.R")
 ```
 
-Quantificat
+TE quantification (not run)
 ```{bash, eval=FALSE}
 parallel -j 35 ~/working_data_01/bin/TElocal/TElocal -b {} \
 --GTF /home/sbuckberry/working_data_02/polo_project/human_ips/resources/hg19_ensGene_with_ercc.gtf \
