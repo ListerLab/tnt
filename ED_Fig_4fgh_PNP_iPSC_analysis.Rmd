@@ -1,8 +1,8 @@
 ---
 title: "Extended Data Figures 4f,g,h: PNP-hiPSC WGBS analysis"
-author: "Sam Buckberry"
+author: "Sam Buckberry"  
 date: '2022-07-13'
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
