@@ -14,7 +14,7 @@ Raw and processed data for this study are accessible under [GEO SuperSeries GSE1
     - [Extended Data Figure 3i: Lentiviral insertion analysis](ED_Fig_4i_lenti_insertion_analysis.md)
     - [Extended Data Figure 4: DMR reproducability analysis]()
 - [Figure 4 and associated Extended Data Figures]()
-    - [Extended Data Figure 8k: Choi et al. reanalysis](Choi_ESC_iPSC_differential_expression.html)
+    - [Extended Data Figure 8k: Choi et al. reanalysis](Choi_ESC_iPSC_differential_expression.md)
     - [Extended Data Figure 8l: Ma et al. reanalysis](SCNT_differential_expression.md)
     - [Extended Data Figure 9c,d,e: Evaluation of published criteria](REVISION_Koyanagi_Ruiz_genes_TE_methylation.md)
 - [Figure 5 and associated Extended Data Figures](REVISION_differentiation_quantifications.md)  
