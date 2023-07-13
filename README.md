@@ -10,7 +10,7 @@ Raw and processed data for this study are accessible under [GEO SuperSeries GSE1
 - [Figure 3 and associated Extended Data Figures](Fig_3.md)
     - [Extended Data Figure 2b: CNV analysis](ED_Fig_2b_CNV_analysis.md)
     - [Extended Data Figure 2g,h,i: Ma et al. re-analysis](ED_Fig_3ghi_Ma_et_al_analysis.md)
-    - [Extended Data Figure 3f,g,h: Primed-Naive-Primed analysis]()
+    - [Extended Data Figure 3f,g,h: Primed-Naive-Primed analysis](ED_Fig_4fgh_PNP_iPSC_analysis.md)
     - [Extended Data Figure 3i: Lentiviral insertion analysis]()
     - [Extended Data Figure 4: DMR reproducability analysis]()
 - [Figure 4 and associated Extended Data Figures]()
