@@ -1,7 +1,7 @@
 hiPSC differentiation analysis
 ================
 Sam Buckberry
-2023-06-23
+2023-07-15
 
 ``` r
 source("R/project_functions.R")
@@ -206,14 +206,17 @@ Plot differentiation results for each genetic background
 plot_line <- function(line, fill_cols=c("#009e73", "#eebc4c")){
     
     line_dat <- dat[dat$Line == line, ]
-    line_dat$Measure <- str_remove(string = line_dat$Measure, pattern = "Percentage of ")
+    line_dat$Measure <- str_remove(string = line_dat$Measure,
+                                   pattern = "Percentage of ")
     
     ## Add plot identifier
-    line_dat$ids <- str_c(line_dat$Experiment, line_dat$Platform, line_dat$Measure, sep = "_")
+    line_dat$ids <- str_c(line_dat$Experiment, line_dat$Platform,
+                          line_dat$Measure, sep = "_")
     ids <- unique(line_dat$ids)
     
     plot_expt <- function(id){
-        gg <- ggplot(data = line_dat[line_dat$ids == id, ], aes(x = Group, y = Value,
+        gg <- ggplot(data = line_dat[line_dat$ids == id, ],
+                     aes(x = Group, y = Value,
                                       fill=Group, colour="black")) +
     geom_point(size=2, alpha=0.7, shape=21) +
     scale_color_manual(values = c("#000000")) +
@@ -287,6 +290,30 @@ dev.off()
 
     ## quartz_off_screen 
     ##                 2
+
+``` r
+plot_line("MSC")
+```
+
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
+plot_line("NHEK")
+```
+
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+
+``` r
+plot_line("HDF", fill_cols = c("#009e73", "#eebc4c", "#a3a3a3"))
+```
+
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-4-3.png)<!-- -->
+
+``` r
+plot_line("MEL1", fill_cols = c("#a3a3a3", "#009e73", "#eebc4c"))
+```
+
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-4-4.png)<!-- -->
 
 Plot for each type of differentiation
 
@@ -388,31 +415,31 @@ dev.off()
 plot_diff(diff = "Butcher_Endoderm")
 ```
 
-![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 ``` r
 plot_diff(diff = "Lung")
 ```
 
-![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-5-2.png)<!-- -->
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-6-2.png)<!-- -->
 
 ``` r
 plot_diff(diff = "Skeletal_Muscle")
 ```
 
-![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-5-3.png)<!-- -->
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-6-3.png)<!-- -->
 
 ``` r
 plot_diff(diff = "Neural")
 ```
 
-![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-5-4.png)<!-- -->
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-6-4.png)<!-- -->
 
 ``` r
 plot_diff(diff = "NSC")
 ```
 
-![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-5-5.png)<!-- -->
+![](REVISION_differentiation_quantifications_files/figure-gfm/unnamed-chunk-6-5.png)<!-- -->
 
 Calculate differentiation stats
 

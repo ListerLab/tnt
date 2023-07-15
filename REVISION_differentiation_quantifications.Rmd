@@ -11,7 +11,7 @@ source("R/project_functions.R")
 
 
 List the data files for differentiations
-```{r}
+```{r, cache=TRUE}
 dat <- read.csv("differentiation_expts/plot_data/221204_all_diffs.csv")
 ```
 
@@ -19,18 +19,21 @@ dat <- read.csv("differentiation_expts/plot_data/221204_all_diffs.csv")
 Plotting functions
 
 Plot differentiation results for each genetic background
-```{r}
+```{r, cache=TRUE}
 plot_line <- function(line, fill_cols=c("#009e73", "#eebc4c")){
     
     line_dat <- dat[dat$Line == line, ]
-    line_dat$Measure <- str_remove(string = line_dat$Measure, pattern = "Percentage of ")
+    line_dat$Measure <- str_remove(string = line_dat$Measure,
+                                   pattern = "Percentage of ")
     
     ## Add plot identifier
-    line_dat$ids <- str_c(line_dat$Experiment, line_dat$Platform, line_dat$Measure, sep = "_")
+    line_dat$ids <- str_c(line_dat$Experiment, line_dat$Platform,
+                          line_dat$Measure, sep = "_")
     ids <- unique(line_dat$ids)
     
     plot_expt <- function(id){
-        gg <- ggplot(data = line_dat[line_dat$ids == id, ], aes(x = Group, y = Value,
+        gg <- ggplot(data = line_dat[line_dat$ids == id, ],
+                     aes(x = Group, y = Value,
                                       fill=Group, colour="black")) +
     geom_point(size=2, alpha=0.7, shape=21) +
     scale_color_manual(values = c("#000000")) +
@@ -80,6 +83,13 @@ pdf("differentiation_expts/plots/MEL1_all_diff_quant.pdf", width = 4, height = 7
 plot_line("MEL1", fill_cols = c("#a3a3a3", "#009e73", "#eebc4c"))
 dev.off()
 
+```
+
+```{r}
+plot_line("MSC")
+plot_line("NHEK")
+plot_line("HDF", fill_cols = c("#009e73", "#eebc4c", "#a3a3a3"))
+plot_line("MEL1", fill_cols = c("#a3a3a3", "#009e73", "#eebc4c"))
 ```
 
 

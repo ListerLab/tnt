@@ -2,7 +2,7 @@
 title: "Evaluate published criteria of hiPSC quality"
 author: "Sam Buckberry"
 date: "`r Sys.Date()`"
-output: html_document
+output: github_document
 ---
 
 Analysis of data in context of findings in
@@ -13,7 +13,7 @@ Ruiz, S. et al. Identification of a specific reprogramming-associated epigenetic
 
 as per reviewer request 
 
-```{r}
+```{r, cache=TRUE}
 source("R/project_functions.R")
 
 gr_te <- readRDS("resources/hg19_rmsk_TE_granges.Rds")
