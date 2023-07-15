@@ -19,7 +19,7 @@ Raw and processed data for this study are accessible under [GEO SuperSeries GSE1
 - [Figure 5 and associated Extended Data Figures](REVISION_differentiation_quantifications.md)  
 - [CG-DMR analyses](CG_DMR_analysis.md)
 - [CH-DMR analyses](CH_DMR_analysis.md)
-- [Imprinting analyses](REVISION_imprinting_analyses.html)
+- [Imprinting analyses](REVISION_imprinting_analyses.md)
 
 ### Installing project packages and loading custom functions
 Run the following R scripts to install and load R packages and functions required to run the analyses detailed in this repo. 
