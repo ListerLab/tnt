@@ -1,26 +1,208 @@
----
-title: "REVISION_imprint_analyses"
-author: "Sam Buckberry"
-date: "`r Sys.Date()`"
-output: github_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+REVISION_imprint_analyses
+================
+Sam Buckberry
+2023-07-15
 
 Load project functions and libraries
-```{r}
+
+``` r
 source("R/project_functions.R")
 ```
 
+    ## Loading required package: BiocGenerics
+
+    ## 
+    ## Attaching package: 'BiocGenerics'
+
+    ## The following objects are masked from 'package:stats':
+    ## 
+    ##     IQR, mad, sd, var, xtabs
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     anyDuplicated, append, as.data.frame, basename, cbind, colnames,
+    ##     dirname, do.call, duplicated, eval, evalq, Filter, Find, get, grep,
+    ##     grepl, intersect, is.unsorted, lapply, Map, mapply, match, mget,
+    ##     order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    ##     rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    ##     union, unique, unsplit, which.max, which.min
+
+    ## Welcome to Bioconductor
+    ## 
+    ##     Vignettes contain introductory material; view with
+    ##     'browseVignettes()'. To cite Bioconductor, see
+    ##     'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+    ## Loading required package: ggplot2
+
+    ## Loading required package: lattice
+
+    ## Loading required package: GenomicRanges
+
+    ## Loading required package: stats4
+
+    ## Loading required package: S4Vectors
+
+    ## 
+    ## Attaching package: 'S4Vectors'
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     expand.grid, I, unname
+
+    ## Loading required package: IRanges
+
+    ## Loading required package: GenomeInfoDb
+
+    ## Loading required package: SummarizedExperiment
+
+    ## Loading required package: MatrixGenerics
+
+    ## Loading required package: matrixStats
+
+    ## 
+    ## Attaching package: 'matrixStats'
+
+    ## The following objects are masked from 'package:Biobase':
+    ## 
+    ##     anyMissing, rowMedians
+
+    ## 
+    ## Attaching package: 'MatrixGenerics'
+
+    ## The following objects are masked from 'package:matrixStats':
+    ## 
+    ##     colAlls, colAnyNAs, colAnys, colAvgsPerRowSet, colCollapse,
+    ##     colCounts, colCummaxs, colCummins, colCumprods, colCumsums,
+    ##     colDiffs, colIQRDiffs, colIQRs, colLogSumExps, colMadDiffs,
+    ##     colMads, colMaxs, colMeans2, colMedians, colMins, colOrderStats,
+    ##     colProds, colQuantiles, colRanges, colRanks, colSdDiffs, colSds,
+    ##     colSums2, colTabulates, colVarDiffs, colVars, colWeightedMads,
+    ##     colWeightedMeans, colWeightedMedians, colWeightedSds,
+    ##     colWeightedVars, rowAlls, rowAnyNAs, rowAnys, rowAvgsPerColSet,
+    ##     rowCollapse, rowCounts, rowCummaxs, rowCummins, rowCumprods,
+    ##     rowCumsums, rowDiffs, rowIQRDiffs, rowIQRs, rowLogSumExps,
+    ##     rowMadDiffs, rowMads, rowMaxs, rowMeans2, rowMedians, rowMins,
+    ##     rowOrderStats, rowProds, rowQuantiles, rowRanges, rowRanks,
+    ##     rowSdDiffs, rowSds, rowSums2, rowTabulates, rowVarDiffs, rowVars,
+    ##     rowWeightedMads, rowWeightedMeans, rowWeightedMedians,
+    ##     rowWeightedSds, rowWeightedVars
+
+    ## The following object is masked from 'package:Biobase':
+    ## 
+    ##     rowMedians
+
+    ## 
+    ## Attaching package: 'magrittr'
+
+    ## The following object is masked from 'package:GenomicRanges':
+    ## 
+    ##     subtract
+
+    ## 
+    ## Attaching package: 'data.table'
+
+    ## The following object is masked from 'package:SummarizedExperiment':
+    ## 
+    ##     shift
+
+    ## The following object is masked from 'package:GenomicRanges':
+    ## 
+    ##     shift
+
+    ## The following object is masked from 'package:IRanges':
+    ## 
+    ##     shift
+
+    ## The following objects are masked from 'package:S4Vectors':
+    ## 
+    ##     first, second
+
+    ## Loading required package: BSgenome
+
+    ## Loading required package: Biostrings
+
+    ## Loading required package: XVector
+
+    ## 
+    ## Attaching package: 'Biostrings'
+
+    ## The following object is masked from 'package:base':
+    ## 
+    ##     strsplit
+
+    ## Loading required package: rtracklayer
+
+    ## Loading required package: AnnotationDbi
+
+    ## 
+    ## Attaching package: 'ggthemes'
+
+    ## The following object is masked from 'package:cowplot':
+    ## 
+    ##     theme_map
+
+    ## Loading required package: Rsamtools
+
+    ## 
+    ## Attaching package: 'VariantAnnotation'
+
+    ## The following object is masked from 'package:stringr':
+    ## 
+    ##     fixed
+
+    ## The following object is masked from 'package:base':
+    ## 
+    ##     tabulate
+
+    ## 
+    ## Attaching package: 'ChIPpeakAnno'
+
+    ## The following object is masked from 'package:VariantAnnotation':
+    ## 
+    ##     info
+
+    ## 
+    ## Attaching package: 'gtools'
+
+    ## The following object is masked from 'package:e1071':
+    ## 
+    ##     permutations
+
+    ## 
+    ## Attaching package: 'UpSetR'
+
+    ## The following object is masked from 'package:lattice':
+    ## 
+    ##     histogram
+
+    ## Loading required package: limma
+
+    ## 
+    ## Attaching package: 'limma'
+
+    ## The following object is masked from 'package:BiocGenerics':
+    ## 
+    ##     plotMA
+
+    ## Loading required package: grid
+
+    ## 
+    ## Attaching package: 'grid'
+
+    ## The following object is masked from 'package:Biostrings':
+    ## 
+    ##     pattern
+
 Load sample metadata sheet
-```{r, cache=TRUE}
+
+``` r
 mdat <- read.csv("wgbs/metadata/wgbs_metadata_local.csv")
 ```
 
 Load the ICR data
-```{r, cache=TRUE}
+
+``` r
 icrs <- read_xlsx("resources/journal.pgen.1004868.s006.XLSX")
 
 icr_gr <- GRanges(seqnames = icrs$Chromosome,
@@ -34,21 +216,26 @@ icr_gr$Categoly[grepl("Paternal", icr_gr$Categoly)] <- "Paternal germline ICR"
 icr_gr$Categoly[grepl("Placenta", icr_gr$Categoly)] <- "Placenta-specific maternal ICR"
 
 saveRDS(icr_gr, "resources/imprint_control_regions_granges_hg19.Rds")
-
 ```
 
 Calculate mCG/CG for all ICRs for all samples
-```{r, cache=TRUE}
+
+``` r
 icr_mCG <- make_mC_matrix(obj_fls = mdat$BSseq_CG, gr = icr_gr, cores = 4)
+```
+
+    ## Making matrix of mC levels for regions...
+
+``` r
 colnames(icr_mCG) <- mdat$Library_id
 saveRDS(icr_mCG, "wgbs/processed_data/icr_mcg_all.Rds")
 ```
 
-
-### Timecourse ICR plots for Fig. 2 and Fig. S2 -------
+### Timecourse ICR plots for Fig. 2 and Fig. S2 ——-
 
 Create timecourse boxplot for Fig 2 and Fig S2
-```{r, cache=TRUE}
+
+``` r
 icr_timecourse <- c("RL415", "RL702", "RL413", "RL399",
                      "RL414", "RL698", "RL411", "RL412",
                      "RL416", "RL697", "RL417", "RL418", "RL1751_1771")
@@ -57,7 +244,11 @@ icr_time_df <- icr_mCG[ ,icr_timecourse] %>% data.frame()
 icr_time_df$class <- as.character(icr_gr$Categoly)
 
 icr_time_df <- reshape2::melt(icr_time_df)
+```
 
+    ## Using class as id variables
+
+``` r
 icr_time_ind <- match(icr_time_df$variable, mdat$Library_id)
 icr_time_ind2 <- match(icr_timecourse, mdat$Library_id)
  
@@ -73,8 +264,12 @@ gg_icr_time_box <- ggplot(icr_time_df, aes(x = id, y = value,
     scale_fill_manual(values = reprog_pal[c(3,2,1)]) +
     ylab("ICR mCG/CG") + xlab("") +
     sams_pub_theme()
+```
 
+    ## Warning: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.
+    ## ℹ Please use the `linewidth` argument instead.
 
+``` r
 pdf("wgbs/plots/icr_timecourse_boxplots_maternal_germline.pdf",
     height = 2, width = 2.25)
 
@@ -87,7 +282,12 @@ pdf("wgbs/plots/icr_timecourse_boxplots_maternal_germline.pdf",
     sams_pub_theme()
     
 dev.off()
+```
 
+    ## quartz_off_screen 
+    ##                 2
+
+``` r
 pdf("wgbs/plots/icr_timecourse_boxplots_NOT_maternal_germline.pdf",
     height = 3.5, width = 2.25)
 
@@ -100,15 +300,20 @@ pdf("wgbs/plots/icr_timecourse_boxplots_NOT_maternal_germline.pdf",
     sams_pub_theme()
     
 dev.off()
+```
 
+    ## quartz_off_screen 
+    ##                 2
 
+``` r
 gg_icr_time_box
 ```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ### ICR plots for Fig. 3 and Fig. S4
 
-```{r, cache=TRUE}
+``` r
 icr_endpoint <- c("RL417", "RL418", "RL1751_1771", "RL703",  ## Primed
                     "RL1124", "RL1125", # TNT
                     "RL936", "RL937", "RL837", #NtP
@@ -120,7 +325,11 @@ icr_endpoint_df <- icr_mCG[ ,icr_endpoint] %>% data.frame()
 icr_endpoint_df$class <- as.character(icr_gr$Categoly)
 
 icr_endpoint_df <- reshape2::melt(icr_endpoint_df)
+```
 
+    ## Using class as id variables
+
+``` r
 icr_endpoint_ind <- match(icr_endpoint_df$variable, mdat$Library_id)
 icr_endpoint_ind2 <- match(icr_endpoint, mdat$Library_id)
  
@@ -152,9 +361,19 @@ pdf("wgbs/plots/icr_endpoint_boxplots_maternal_germline.pdf",
     scale_fill_manual(values = reprog_pal2[c(2,1,3,4)]) +
     ylab("ICR mCG/CG") + xlab("") +
     sams_pub_theme()
-    
-dev.off()
+```
 
+    ## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+    ## ℹ Please use `linewidth` instead.
+
+``` r
+dev.off()
+```
+
+    ## quartz_off_screen 
+    ##                 2
+
+``` r
 pdf("wgbs/plots/icr_endpoint_boxplots_NOT_maternal_germline.pdf",
     height = 3.5, width = 3)
 
@@ -168,13 +387,20 @@ pdf("wgbs/plots/icr_endpoint_boxplots_NOT_maternal_germline.pdf",
     sams_pub_theme()
     
 dev.off()
-
-gg_icr_endpoint_box
-
 ```
 
-Do some 'wider' statistics for ICRs, as asked by reviewer 4
-```{r, cache=TRUE}
+    ## quartz_off_screen 
+    ##                 2
+
+``` r
+gg_icr_endpoint_box
+```
+
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+Do some ‘wider’ statistics for ICRs, as asked by reviewer 4
+
+``` r
 icr_df <- icr_mCG[ ,c("RL415", "RL702", icr_endpoint)] %>% data.frame()
 
 
@@ -228,19 +454,22 @@ icr_hm <- pheatmap(icr_df[ ,1:11],
          cluster_cols = FALSE, cluster_rows = FALSE,
          gaps_col = c(2, 6, 8),
          gaps_row = c(29, 31, 46))
+```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/icr_endpoint_annotated_heatmap.pdf", width = 5)
 icr_hm
 dev.off()
-
 ```
 
-
+    ## quartz_off_screen 
+    ##                 2
 
 ### Fibroblast replicate ICR plots
 
-```{r, cache=TRUE}
-
+``` r
 plot_icr_boxplots <- function(lib_ids){
     
     df <- icr_mCG[ ,lib_ids] %>% data.frame()
@@ -277,19 +506,29 @@ plot_icr_boxplots <- function(lib_ids){
 fibroblast_rep_ids <- paste0("RL30", 61:72)
 
 plot_icr_boxplots(lib_ids = fibroblast_rep_ids)
-
-
-pdf("wgbs/plots/icr_fibroblast_rep_boxplots.pdf", width = 2.5, 4)
-plot_icr_boxplots(lib_ids = fibroblast_rep_ids)
-dev.off()
-
 ```
 
+    ## Using class as id variables
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
+``` r
+pdf("wgbs/plots/icr_fibroblast_rep_boxplots.pdf", width = 2.5, 4)
+plot_icr_boxplots(lib_ids = fibroblast_rep_ids)
+```
+
+    ## Using class as id variables
+
+``` r
+dev.off()
+```
+
+    ## quartz_off_screen 
+    ##                 2
 
 Heatmap and stats for fibroblast iPSC ICRs
-```{r, cache=TRUE}
+
+``` r
 icr_fib_df <- icr_mCG[ ,fibroblast_rep_ids] %>% data.frame()
 
 ## Setup anova for each ICR
@@ -328,33 +567,49 @@ icr_fib_hm <- pheatmap(icr_fib_df,
          cluster_cols = FALSE, cluster_rows = FALSE,
          gaps_col = c(6),
          gaps_row = c(29, 31, 46))
+```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/icr_fibroblast_rep_endpoint_annotated_heatmap.pdf", width = 5)
 icr_fib_hm
 dev.off()
-
 ```
 
-```{r}
+    ## quartz_off_screen 
+    ##                 2
+
+``` r
 wb_ed_fig9h <- openxlsx::createWorkbook()
 openxlsx::addWorksheet(wb_ed_fig9h, sheetName = "ED_Fig_9h_HDF")
 openxlsx::writeData(wb = wb_ed_fig9h, sheet = "ED_Fig_9h_HDF",
                     x = icr_fib_df)
 ```
 
-
 ### MSC ICR plots
+
 MSC ICR boxplots
-```{r, cache=TRUE}
+
+``` r
 msc_ids <- paste0("RL31", 55:62)
 
 pdf("wgbs/plots/icr_msc_boxplots.pdf", width = 2.5, height = 4)
 plot_icr_boxplots(lib_ids = msc_ids)
+```
+
+    ## Using class as id variables
+
+``` r
 dev.off()
 ```
 
+    ## quartz_off_screen 
+    ##                 2
+
 MSC ICR stats with heatmap
-```{r, cache=TRUE}
+
+``` r
 icr_msc_df <- icr_mCG[ ,msc_ids[c(7,8,1:6)]] %>% data.frame()
 
 ## Setup anova for each ICR
@@ -402,35 +657,51 @@ icr_msc_hm <- pheatmap(icr_msc_df,
          cluster_cols = FALSE, cluster_rows = FALSE,
          gaps_col = c(2,5),
          gaps_row = c(29, 31, 46))
+```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/icr_msc_annotated_heatmap.pdf", width = 5)
 icr_msc_hm
 dev.off()
-
-
 ```
 
-```{r}
+    ## quartz_off_screen 
+    ##                 2
 
+``` r
 openxlsx::addWorksheet(wb_ed_fig9h, sheetName = "ED_Fig_9h_MSC")
 openxlsx::writeData(wb = wb_ed_fig9h, sheet = "ED_Fig_9h_MSC",
                     x = icr_msc_df)
 ```
 
-
 ### Keratinocyte ICR plots
-```{r, cache=TRUE}
+
+``` r
 nkek_ids <- paste0("RL32", 39:47)
 plot_icr_boxplots(lib_ids = nkek_ids)
+```
 
+    ## Using class as id variables
+
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/isc_nhek_boxplots.pdf", width = 2.5, height = 4)
 plot_icr_boxplots(lib_ids = nkek_ids)
+```
+
+    ## Using class as id variables
+
+``` r
 dev.off()
 ```
 
+    ## quartz_off_screen 
+    ##                 2
 
-
-```{r, cache=TRUE}
+``` r
 icr_nhek_df <- icr_mCG[ ,nkek_ids[c(7:9,1:6)]] %>% data.frame()
 
 ## Setup anova for each ICR
@@ -480,13 +751,20 @@ icr_nhek_hm <- pheatmap(icr_nhek_df,
         fontsize = 6,
          gaps_col = c(3,6),
          gaps_row = c(29, 31, 46))
+```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/icr_nhek_annotated_heatmap.pdf", width = 5)
 icr_nhek_hm
 dev.off()
 ```
 
-```{r}
+    ## quartz_off_screen 
+    ##                 2
+
+``` r
 openxlsx::addWorksheet(wb_ed_fig9h, sheetName = "ED_Fig_9h_NHEK")
 openxlsx::writeData(wb = wb_ed_fig9h, sheet = "ED_Fig_9h_NHEK",
                     x = icr_nhek_df)
@@ -495,9 +773,9 @@ openxlsx::saveWorkbook(wb = wb_ed_fig9h,
                        file = "ED_Figure_9h_source_data.xlsx", overwrite = TRUE)
 ```
 
-
 ### Secondary MEL1 system plots
-```{r, cache=TRUE}
+
+``` r
 mel1_ids <- c("RL1980", "RL1981", "RL1982", "RL1983",
   "RL1984", "RL1985", "RL1986", "RL2352",
   "RL2560", "RL2561")
@@ -505,8 +783,11 @@ mel1_ids <- c("RL1980", "RL1981", "RL1982", "RL1983",
 plot_icr_boxplots(lib_ids = mel1_ids)
 ```
 
-```{r, cache=TRUE}
+    ## Using class as id variables
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+``` r
 icr_mel1_df <- icr_mCG[ ,mel1_ids[c(2,8,
                                     7,1,
                                     3,9,
@@ -573,14 +854,20 @@ icr_mel1_hm <- pheatmap(icr_mel1_df,
         fontsize = 6,
         gaps_col = c(2,3,4,6,8),
          gaps_row = c(29, 31, 46))
+```
 
+![](REVISION_imprinting_analyses_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+``` r
 pdf("wgbs/plots/icr_mel1_annotated_heatmap.pdf", width = 5)
 icr_mel1_hm
 dev.off()
 ```
 
+    ## quartz_off_screen 
+    ##                 2
 
-```{r}
+``` r
 wb_ed_fig8d <- openxlsx::createWorkbook() 
 openxlsx::addWorksheet(wb_ed_fig8d, sheetName = "ED_Fig_8d")
 openxlsx::writeData(wb = wb_ed_fig8d, sheet = "ED_Fig_8d",
@@ -588,6 +875,3 @@ openxlsx::writeData(wb = wb_ed_fig8d, sheet = "ED_Fig_8d",
 openxlsx::saveWorkbook(wb = wb_ed_fig8d,
                        file = "ED_Figure_8d_source_data.xlsx", overwrite = TRUE)
 ```
-
-
-
