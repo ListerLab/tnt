@@ -36,3 +36,4 @@ Downloading the CGmap files for WGBS data and processing with these scripts shou
 
 This metadata file has the information required to reproduce the analyses detailed in the R markdown files in this repository.  
 
+All additional files for running the analyses in these Rmarkdown documents will be availble if you clone this repository. 
