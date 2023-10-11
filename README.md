@@ -1,6 +1,6 @@
 # Epigenetic and functional correction of human iPS cells by transient naive reprogramming
 
-Analysis code for Buckberry, Liu, Poppe, Tan et al. "Transient naive reprogramming corrects hiPS cells functionally and epigenetically"
+Analysis code for Buckberry, S., Liu, X., Poppe, D. et al. Transient naive reprogramming corrects hiPS cells functionally and epigenetically. Nature 620, 863–872 (2023). https://doi.org/10.1038/s41586-023-06424-7
 
 Raw and processed data for this study are accessible under [GEO SuperSeries GSE159297](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE159297).
 
